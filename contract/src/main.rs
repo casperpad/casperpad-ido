@@ -23,9 +23,7 @@ mod detail;
 mod entry_points;
 mod error;
 mod owner;
-use crate::constants::{
-    CONTRACT_NAME, CONTRACT_NAME_KEY_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME,
-};
+use crate::constants::{CONTRACT_NAME_KEY_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME};
 use error::Error;
 
 #[no_mangle]
@@ -55,27 +53,33 @@ pub extern "C" fn get_contract_name() {
 
 #[no_mangle]
 pub extern "C" fn call() {
+    // The key shouldn't already exist in the named keys.
+    let missing_key = runtime::get_key(CONTRACT_NAME_KEY_NAME);
+    if missing_key.is_some() {
+        runtime::revert(Error::KeyAlreadyExists);
+    }
+    let missing_key = runtime::get_key(CONTRACT_NAME_KEY_NAME);
+    if missing_key.is_some() {
+        runtime::revert(Error::KeyAlreadyExists);
+    }
+
     // Save named_keys
     let mut named_keys = NamedKeys::new();
 
-    let contract_name_key = {
-        let name_uref: URef = storage::new_uref(CONTRACT_NAME).into_read();
-        Key::from(name_uref)
-    };
     // Set Contract owner
     let owner: Address = detail::get_caller_address().unwrap_or_revert();
     let owner_uref: URef = storage::new_uref(owner).into_read_write();
     let owner_key: Key = Key::from(owner_uref);
 
-    named_keys.insert(CONTRACT_NAME_KEY_NAME.to_string(), contract_name_key);
     named_keys.insert(OWNER_KEY_NAME.to_string(), owner_key);
 
     let entry_points = entry_points::default();
 
     let (contract_hash, _version) =
         storage::new_locked_contract(entry_points, Some(named_keys), None, None);
-
-    runtime::put_key(CONTRACT_NAME, Key::from(contract_hash));
+    let mut contract_hash_key_name: String = String::from(CONTRACT_NAME_KEY_NAME);
+    contract_hash_key_name.push_str("_contract_hash");
+    runtime::put_key(contract_hash_key_name.as_str(), Key::from(contract_hash));
 }
 
 #[panic_handler]

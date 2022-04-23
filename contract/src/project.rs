@@ -1,7 +1,30 @@
-use casper_types::{CLType,CLTyped, Key, bytesrepr::ToBytes,bytesrepr::{self, FromBytes}};
+use casper_types::{CLType,CLTyped, Key, bytesrepr::ToBytes,bytesrepr::{self, FromBytes}, U256, URef};
+
+enum Status {
+  Upcoming,
+  Going,
+  Completed,
+  Paused,
+  Cancelled
+}
+
+struct TokenInfo {
+
+}
+
+struct ScheduleInfo {
+
+}
 
 struct Project {
   id:String,
+  name:String,
+  start_time:U256,
+  end_time:U256,
+
+  status: Status,
+  total_participated:U256,
+  whiltlisted_users:URef
 }
 
 // The struct `Project` can me treated as CLType
