@@ -9,7 +9,7 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 // `no_std` environment.
 extern crate alloc;
 
-use crate::alloc::string::{String};
+use crate::alloc::string::{String, ToString};
 
 use casper_contract::{
     contract_api::{runtime, storage},
