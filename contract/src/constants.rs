@@ -7,6 +7,5 @@ pub const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wal
 pub const OWNER_RUNTIME_ARG_NAME: &str = "owner";
 
 // Add project RUNTIME_NAMES
-pub const 
 // ENTRY_POINT_NAMES
 pub const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";

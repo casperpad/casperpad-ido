@@ -7,6 +7,7 @@ edition = "2018"
 casper-contract = "1.4.4"
 casper-types = "1.5.0"
 casper-erc20 = "0.2.1"
+merkle-cbt = "0.3.2"
 
 [[bin]]
 name = "contract"
