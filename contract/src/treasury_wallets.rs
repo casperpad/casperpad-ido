@@ -8,8 +8,8 @@ use crate::{constants::TREASURY_WALLET_KEY_NAME, detail, Address};
 
 /// Creates a dictionary item key for a dictionary item.
 #[inline]
-fn make_dictionary_item_key(owner: Address) -> String {
-    let preimage = owner.to_bytes().unwrap_or_revert();
+fn make_dictionary_item_key(project: Address) -> String {
+    let preimage = project.to_bytes().unwrap_or_revert();
     // NOTE: As for now dictionary item keys are limited to 64 characters only. Instead of using
     // hashing (which will effectively hash a hash) we'll use base64. Preimage is about 33 bytes for
     // both Address variants, and approximated base64-encoded length will be 4 * (33 / 3) ~ 44

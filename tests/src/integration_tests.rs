@@ -12,7 +12,7 @@ mod tests {
     };
 
     use casper_types::{
-        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, Key, PublicKey,
+        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, PublicKey,
         RuntimeArgs, SecretKey,
     };
 
@@ -23,7 +23,9 @@ mod tests {
     const OWNER_KEY_NAME: &str = "owner";
     const CONTRACT_HASH_KEY_NAME: &str = "casper_ido_contract_hash";
     const CONTRACT_WASM: &str = "contract.wasm";
-    const GET_OWNER_ENTRY_NAME: &str = "get_owner";
+    const OWNER_RUNTIME_ARG_NAME: &str = "owner";
+    const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
+    const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -34,9 +36,14 @@ mod tests {
         let mut builder = InMemoryWasmTestBuilder::default();
         builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST);
 
-        let install_contract =
-            ExecuteRequestBuilder::standard(*DEFAULT_ACCOUNT_ADDR, CONTRACT_WASM, runtime_args! {})
-                .build();
+        let install_contract = ExecuteRequestBuilder::standard(
+            *DEFAULT_ACCOUNT_ADDR,
+            CONTRACT_WASM,
+            runtime_args! {
+                DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR
+            },
+        )
+        .build();
 
         builder.exec(install_contract).expect_success().commit();
 
@@ -65,24 +72,53 @@ mod tests {
         (builder, test_context)
     }
 
+    fn account2() -> AccountHash {
+        const MY_ACCOUNT: [u8; 32] = [7u8; 32];
+        let secret_key = SecretKey::ed25519_from_bytes(MY_ACCOUNT).unwrap();
+        let public_key = PublicKey::from(&secret_key);
+
+        // Create an AccountHash from a public key.
+        AccountHash::from(&public_key)
+    }
+
     #[test]
     fn should_install_contract() {
         setup();
     }
 
     #[test]
-    fn should_return_contract_owner() {
+    fn should_transfer_contract_owner() {
         let (mut builder, context) = setup();
-        let get_contract_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+        let transfer_ownership_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,
             None,
-            GET_OWNER_ENTRY_NAME,
-            runtime_args! {},
+            TRANSFER_OWNERSHIP_ENRTY_NAME,
+            runtime_args! {
+                OWNER_RUNTIME_ARG_NAME => account2()
+            },
         )
         .build();
-        builder.exec(get_contract_req).expect_success().commit();
+        builder
+            .exec(transfer_ownership_req)
+            .expect_success()
+            .commit();
         let result_of_query: Address = builder.get_value(context.ido_contract, OWNER_KEY_NAME);
+        assert_eq!(result_of_query, Address::from(account2())); // *DEFAULT_ACCOUNT_ADDR
+        let transfer_ownership_req2 = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            TRANSFER_OWNERSHIP_ENRTY_NAME,
+            runtime_args! {
+                OWNER_RUNTIME_ARG_NAME => account2()
+            },
+        )
+        .build();
+        builder
+            .exec(transfer_ownership_req2)
+            .expect_failure()
+            .commit();
     }
 
     #[test]
