@@ -1,10 +1,10 @@
 #![feature(map_first_last)]
-#[cfg(test)]
 
+#[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
+    use casper_erc20::Address;
 
     use casper_engine_test_support::{
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, ARG_AMOUNT,
@@ -12,23 +12,25 @@ mod tests {
     };
 
     use casper_types::{
-        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, PublicKey,
+        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, Key, PublicKey,
         RuntimeArgs, SecretKey,
     };
 
     const MY_ACCOUNT: [u8; 32] = [7u8; 32];
     // Define `KEY` constant to match that in the contract.
 
+    const CONTRACT_KEY_NAME: &str = "casper_ido";
+    const OWNER_KEY_NAME: &str = "owner";
     const CONTRACT_HASH_KEY_NAME: &str = "casper_ido_contract_hash";
-    const CONTRACT_KEY_NAME: &str = "ido_contract";
     const CONTRACT_WASM: &str = "contract.wasm";
+    const GET_OWNER_ENTRY_NAME: &str = "get_owner";
     #[derive(Copy, Clone)]
     struct TestContext {
-        // ido_package: ContractPackageHash,
+        ido_contract_package: ContractPackageHash,
         ido_contract: ContractHash,
     }
 
-    fn setup() ->(InMemoryWasmTestBuilder, TestContext) {
+    fn setup() -> (InMemoryWasmTestBuilder, TestContext) {
         let mut builder = InMemoryWasmTestBuilder::default();
         builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST);
 
@@ -42,6 +44,13 @@ mod tests {
             .get_account(*DEFAULT_ACCOUNT_ADDR)
             .expect("should have account");
 
+        let ido_contract_package = account
+            .named_keys()
+            .get(CONTRACT_KEY_NAME)
+            .and_then(|key| key.into_hash())
+            .map(ContractPackageHash::new)
+            .expect("should have contract package hash");
+
         let ido_contract = account
             .named_keys()
             .get(CONTRACT_HASH_KEY_NAME)
@@ -50,6 +59,7 @@ mod tests {
             .expect("should have contract hash");
 
         let test_context = TestContext {
+            ido_contract_package,
             ido_contract,
         };
         (builder, test_context)
@@ -58,11 +68,22 @@ mod tests {
     #[test]
     fn should_install_contract() {
         setup();
-        // dbg!(test_context.ido_package);
     }
 
-    // #[test]
-    // fn should_return_contract_name() {}
+    #[test]
+    fn should_return_contract_owner() {
+        let (mut builder, context) = setup();
+        let get_contract_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            GET_OWNER_ENTRY_NAME,
+            runtime_args! {},
+        )
+        .build();
+        builder.exec(get_contract_req).expect_success().commit();
+        let result_of_query: Address = builder.get_value(context.ido_contract, OWNER_KEY_NAME);
+    }
 
     #[test]
     fn should_error_on_missing_runtime_arg() {

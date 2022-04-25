@@ -21,4 +21,4 @@ pub(crate) fn write_owner_to(uref: URef, value: Address) {
     storage::write(uref, value);
 }
 
-// pub(crate) fn
+// pub(crate) fn only_owner() {}

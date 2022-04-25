@@ -23,6 +23,7 @@ mod detail;
 mod entry_points;
 mod error;
 mod owner;
+mod treasury_wallets;
 use crate::constants::{CONTRACT_NAME_KEY_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME};
 use error::Error;
 
@@ -43,12 +44,6 @@ pub extern "C" fn transfer_ownership() {
 pub extern "C" fn get_owner() {
     let owner: Address = detail::read_from(OWNER_KEY_NAME);
     runtime::ret(CLValue::from_t(owner).unwrap_or_revert());
-}
-
-#[no_mangle]
-pub extern "C" fn get_contract_name() {
-    let contract_name: String = detail::read_from(CONTRACT_NAME_KEY_NAME);
-    runtime::ret(CLValue::from_t(contract_name).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -75,8 +70,12 @@ pub extern "C" fn call() {
 
     let entry_points = entry_points::default();
 
-    let (contract_hash, _version) =
-        storage::new_locked_contract(entry_points, Some(named_keys), None, None);
+    let (contract_hash, _version) = storage::new_contract(
+        entry_points,
+        Some(named_keys),
+        Some(String::from(CONTRACT_NAME_KEY_NAME)),
+        None,
+    );
     let mut contract_hash_key_name: String = String::from(CONTRACT_NAME_KEY_NAME);
     contract_hash_key_name.push_str("_contract_hash");
     runtime::put_key(contract_hash_key_name.as_str(), Key::from(contract_hash));
