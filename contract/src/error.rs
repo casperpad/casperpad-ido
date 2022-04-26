@@ -15,12 +15,14 @@ use casper_types::ApiError;
 pub enum Error {
     InsufficientBalance = 0,
     InsufficientAllowance = 1,
+
     // User Error
     PermissionDenied = 41,
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,
     KeyMismatch = 92,
+    Overflow = 93,
 }
 
 impl From<Error> for ApiError {
