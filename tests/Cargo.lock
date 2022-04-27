@@ -1134,11 +1134,15 @@ dependencies = [
 name = "tests"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "casper-contract",
  "casper-engine-test-support",
  "casper-erc20",
  "casper-execution-engine",
  "casper-types",
+ "chrono",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

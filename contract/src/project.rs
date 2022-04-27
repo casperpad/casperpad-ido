@@ -1,15 +1,11 @@
-use casper_types::{
-    bytesrepr::ToBytes,
-    bytesrepr::{self, FromBytes},
-    CLType, CLTyped, U256,
-};
+use casper_types::Key;
 
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
 
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Status {
     Upcoming,
     Going,
@@ -18,11 +14,11 @@ pub enum Status {
     Cancelled,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenInfo {
-    pub token_price: U256,
+    pub token_price: u32,
     pub token_symbol: String,
-    pub total_supply: U256,
+    pub total_supply: u32,
 }
 
 // struct ScheduleInfo {}
@@ -66,7 +62,7 @@ mod my_date_format {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Project {
     pub id: String,
     pub name: String,
@@ -75,48 +71,10 @@ pub struct Project {
     pub start_time: DateTime<Utc>,
     #[serde(with = "my_date_format")]
     pub end_time: DateTime<Utc>,
-    pub status: Status,
     pub token_info: TokenInfo,
-    pub whitelisted_users_length: U256,
-    // whitelisted_users: URef,
-}
-
-// The struct `Project` can be treated as CLType
-impl CLTyped for Project {
-    fn cl_type() -> CLType {
-        CLType::ByteArray(10u32)
-    }
-}
-
-// Serialize for Project
-impl ToBytes for Project {
-    #[inline(always)]
-    fn to_bytes(&self) -> Result<Vec<u8>, bytesrepr::Error> {
-        let serialized = serde_json::to_string(&self).unwrap();
-        Ok(serialized.as_bytes().to_vec())
-    }
-
-    #[inline(always)]
-    fn serialized_length(&self) -> usize {
-        let serialized = serde_json::to_string(&self).unwrap();
-        serialized.as_bytes().len()
-    }
-
-    fn into_bytes(self) -> Result<Vec<u8>, casper_types::bytesrepr::Error>
-    where
-        Self: Sized,
-    {
-        self.to_bytes()
-    }
-}
-
-// Deserialize for Project
-impl FromBytes for Project {
-    fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), bytesrepr::Error> {
-        let (string, remainder) = String::from_bytes(bytes).unwrap();
-        let project: Project = serde_json::from_str(&string).unwrap();
-        Ok((project, remainder))
-    }
+    pub status: Key,
+    pub claim_status: Key,
+    pub users_length: Key,
 }
 
 impl Project {
@@ -124,19 +82,30 @@ impl Project {
         id: &str,
         name: &str,
         private: bool,
-        start_time: u32,
-        end_time: u32,
+        start_time: i64,
+        end_time: i64,
         token_info: TokenInfo,
+        status: Key,
+        claim_status: Key,
+        users_length: Key,
     ) -> Self {
         Self {
             id: String::from(id),
             name: String::from(name),
             private,
-            start_time: Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, start_time),
-            end_time: Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, end_time),
-            status: Status::Upcoming,
-            whitelisted_users_length: U256::from(0),
-            token_info, // whitelisted_users:
+            start_time: Utc.timestamp_millis(start_time),
+            end_time: Utc.timestamp_millis(end_time),
+            status,
+            claim_status,
+            token_info,
+            users_length,
         }
+    }
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+    pub fn deserialize(value: String) -> Project {
+        let deserialized: Project = serde_json::from_str(&value).unwrap();
+        deserialized
     }
 }

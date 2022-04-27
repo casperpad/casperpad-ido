@@ -4,11 +4,15 @@ pub const OWNER_KEY_NAME: &str = "owner";
 pub const TREASURY_WALLET_KEY_NAME: &str = "treasury_wallet";
 pub const DEFAULT_TREASURY_WALLET_KEY_NAME: &str = "default_treasury_wallet";
 pub const PROJECTS_KEY_NAME: &str = "projects";
+pub const USERS_KEY_NAME: &str = "users";
+pub const INVESTS_KEY_NAME: &str = "invests";
+pub const RESULT_KEY_NAME: &str = "result";
 // RUNTIME_NAMES
 pub const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
 pub const OWNER_RUNTIME_ARG_NAME: &str = "owner";
 pub const PROJECT_RUNTIME_ARG_NAME: &str = "project";
 pub const WALLET_RUNTIME_ARG_NAME: &str = "wallet";
+pub const CSPR_AMOUNT_RUNTIME_ARG_NAME: &str = "cspr_amount";
 
 // runtime arguments for create project
 pub const PROJECT_ID_RUNTIME_ARG_NAME: &str = "id";
@@ -26,3 +30,5 @@ pub const GET_OWNER_ENTRY_NAME: &str = "get_owner";
 pub const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
 pub const SET_PROJECT_TREASURY_WALLET_ENTRY_NAME: &str = "set_project_treasury_wallet";
 pub const CREATE_PROJECT_ENTRY_NAME: &str = "add_project";
+pub const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
+pub const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";

@@ -8,7 +8,6 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 // We need to explicitly import the std alloc crate and `alloc::string::String` as we're in a
 // `no_std` environment.
 extern crate alloc;
-
 use crate::alloc::string::{String, ToString};
 
 use casper_contract::{
@@ -16,28 +15,43 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_erc20::Address;
-use casper_types::{account::AccountHash, contracts::NamedKeys, CLValue, Key, URef, U256};
+use casper_types::{
+    account::AccountHash, bytesrepr::ToBytes, contracts::NamedKeys, CLTyped, CLValue, Key, URef,
+    U256,
+};
 
 mod constants;
 mod default_treasury_wallet;
 mod detail;
 mod entry_points;
 mod error;
+mod invests;
 mod owner;
 mod project;
 mod projects;
 mod treasury_wallets;
 use constants::{
-    CONTRACT_NAME_KEY_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
+    CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
     DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME,
     PROJECTS_KEY_NAME, PROJECT_END_TIME_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
     PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_RUNTIME_ARG_NAME,
     PROJECT_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
     PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
-    WALLET_RUNTIME_ARG_NAME,
+    RESULT_KEY_NAME, USERS_KEY_NAME, WALLET_RUNTIME_ARG_NAME,
 };
 use error::Error;
 use project::{Project, TokenInfo};
+
+fn store_result<T: CLTyped + ToBytes>(result: T) {
+    match runtime::get_key(RESULT_KEY_NAME) {
+        Some(Key::URef(uref)) => storage::write(uref, result),
+        Some(_) => unreachable!(),
+        None => {
+            let new_uref = storage::new_uref(result);
+            runtime::put_key(RESULT_KEY_NAME, new_uref.into());
+        }
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn transfer_ownership() {
@@ -97,22 +111,37 @@ pub extern "C" fn get_project_treasury_wallet() {
 
 #[no_mangle]
 pub extern "C" fn add_project() {
+    owner::only_owner();
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
     let project_name: String = runtime::get_named_arg(PROJECT_NAME_RUNTIME_ARG_NAME);
-    let project_start_time: u32 = runtime::get_named_arg(PROJECT_START_TIME_RUNTIME_ARG_NAME);
-    let project_end_time: u32 = runtime::get_named_arg(PROJECT_END_TIME_RUNTIME_ARG_NAME);
+    let project_start_time: i64 = runtime::get_named_arg(PROJECT_START_TIME_RUNTIME_ARG_NAME);
+    let project_end_time: i64 = runtime::get_named_arg(PROJECT_END_TIME_RUNTIME_ARG_NAME);
     let project_private: bool = runtime::get_named_arg(PROJECT_PRIVATE_RUNTIME_ARG_NAME);
     let project_token_symbol: String =
         runtime::get_named_arg(PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME);
-    let project_token_price: U256 =
-        runtime::get_named_arg(PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME);
-    let project_token_total_supply: U256 =
+    let project_token_price: u32 = runtime::get_named_arg(PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME);
+    let project_token_total_supply: u32 =
         runtime::get_named_arg(PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
     let token_info = TokenInfo {
         token_price: project_token_price,
         token_symbol: project_token_symbol,
         total_supply: project_token_total_supply,
     };
+
+    let status_key = {
+        let uref = storage::new_uref(U256::from(0i32)).into_read_write();
+        Key::from(uref)
+    };
+
+    let users_length_key = {
+        let uref = storage::new_uref(U256::from(0i32)).into_read_write();
+        Key::from(uref)
+    };
+    let claim_status_key = {
+        let uref = storage::new_dictionary(USERS_KEY_NAME).unwrap();
+        Key::from(uref)
+    };
+
     let project = Project::new(
         &project_id,
         &project_name,
@@ -120,9 +149,13 @@ pub extern "C" fn add_project() {
         project_start_time,
         project_end_time,
         token_info,
+        status_key,
+        claim_status_key,
+        users_length_key,
     );
     let projects_uref = projects::get_projects_uref();
-    projects::write_project_to(projects_uref, &project_id, project)
+    projects::write_project_to(projects_uref, project_id, project);
+    runtime::ret(CLValue::from_t(true).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -130,8 +163,37 @@ pub extern "C" fn get_project_info_by_id() {
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
 
     let projects_uref = projects::get_projects_uref();
-    let project = projects::read_project_from(projects_uref, &project_id);
+    let project = projects::read_project_from(projects_uref, project_id);
+    store_result(project.clone());
     runtime::ret(CLValue::from_t(project).unwrap_or_revert());
+}
+
+#[no_mangle]
+pub extern "C" fn add_invest() {
+    let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
+    let account: Address = detail::get_caller_address().unwrap_or_revert();
+    let amount: U256 = runtime::get_named_arg(CSPR_AMOUNT_RUNTIME_ARG_NAME);
+    invests::write_invest_to(project_id, account, amount);
+    runtime::ret(CLValue::from_t(true).unwrap_or_revert());
+}
+
+#[no_mangle]
+pub extern "C" fn remove_invest() {}
+
+#[no_mangle]
+pub extern "C" fn get_invest_info() {
+    let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
+    let account: Address = detail::get_caller_address().unwrap_or_revert();
+    let amount: U256 = invests::read_invest_from(project_id, account);
+    store_result(amount);
+    runtime::ret(CLValue::from_t(amount).unwrap_or_revert());
+}
+
+#[no_mangle]
+pub extern "C" fn claim() {
+    // let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
+    // let account: Address = detail::get_caller_address().unwrap_or_revert();
+    // let schedule_id = 5;
 }
 
 #[no_mangle]
@@ -150,19 +212,24 @@ pub extern "C" fn call() {
     let mut named_keys = NamedKeys::new();
 
     // Set Contract owner
-    let owner: Address = detail::get_caller_address().unwrap_or_revert();
-    let owner_uref: URef = storage::new_uref(owner).into_read_write();
-    let owner_key: Key = Key::from(owner_uref);
+    let owner_key: Key = {
+        let owner: Address = detail::get_caller_address().unwrap_or_revert();
+        let owner_uref: URef = storage::new_uref(owner).into_read_write();
+        Key::from(owner_uref)
+    };
     // Set default treasury wallet
-    let default_treasury_wallet_hash: AccountHash =
-        runtime::get_named_arg(DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME);
-    let default_treasury_wallet = Address::from(default_treasury_wallet_hash);
-    let default_treasury_wallet_uref: URef =
-        storage::new_uref(default_treasury_wallet).into_read_add_write();
-    let default_treasury_wallet_key: Key = Key::from(default_treasury_wallet_uref);
+    let default_treasury_wallet_key: Key = {
+        let default_treasury_wallet_hash: AccountHash =
+            runtime::get_named_arg(DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME);
+        let default_treasury_wallet = Address::from(default_treasury_wallet_hash);
+        let default_treasury_wallet_uref: URef =
+            storage::new_uref(default_treasury_wallet).into_read_add_write();
+        Key::from(default_treasury_wallet_uref)
+    };
     // Initialize project dictionary
-    let balances_key: Key = {
-        let uref: URef = storage::new_dictionary(PROJECTS_KEY_NAME).unwrap_or_revert();
+    let uref: URef = storage::new_dictionary(PROJECTS_KEY_NAME).unwrap_or_revert();
+    let projects_dictionary_key: Key = {
+        runtime::remove_key(PROJECTS_KEY_NAME);
         Key::from(uref)
     };
 
@@ -171,7 +238,7 @@ pub extern "C" fn call() {
         DEFAULT_TREASURY_WALLET_KEY_NAME.to_string(),
         default_treasury_wallet_key,
     );
-    named_keys.insert(PROJECTS_KEY_NAME.to_string(), balances_key);
+    named_keys.insert(PROJECTS_KEY_NAME.to_string(), projects_dictionary_key);
 
     let entry_points = entry_points::default();
 

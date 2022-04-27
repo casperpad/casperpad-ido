@@ -9,7 +9,10 @@ casper-engine-test-support = { version = "2.1.0", features = ["test-support"] }
 casper-execution-engine = "1.5.0"
 casper-types = "1.5.0"
 casper-erc20 = "0.2.1"
-
+chrono = "0.4"
+serde ={ version="1.0.136",features = ["derive"] }
+serde_json="1.0.79"
+base64 = { version = "0.13.0", default-features = false, features = ["alloc"] }
 [[bin]]
 name = "integration-tests"
 path = "src/integration_tests.rs"

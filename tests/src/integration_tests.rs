@@ -12,7 +12,7 @@ mod tests {
     };
 
     use casper_types::{
-        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, PublicKey,
+        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, Key, PublicKey,
         RuntimeArgs, SecretKey,
     };
 
@@ -26,6 +26,17 @@ mod tests {
     const OWNER_RUNTIME_ARG_NAME: &str = "owner";
     const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
     const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
+    const CREATE_PROJECT_ENTRY_NAME: &str = "add_project";
+    const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";
+    const PROJECT_ID_RUNTIME_ARG_NAME: &str = "id";
+    const PROJECT_NAME_RUNTIME_ARG_NAME: &str = "name";
+    const PROJECT_START_TIME_RUNTIME_ARG_NAME: &str = "start_time";
+    const PROJECT_END_TIME_RUNTIME_ARG_NAME: &str = "end_time";
+    const PROJECT_PRIVATE_RUNTIME_ARG_NAME: &str = "private";
+    const PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME: &str = "token_symbol";
+    const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";
+    const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
+
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -119,6 +130,45 @@ mod tests {
             .exec(transfer_ownership_req2)
             .expect_failure()
             .commit();
+    }
+
+    #[test]
+    fn should_add_project() {
+        let (mut builder, context) = setup();
+        let add_project_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            CREATE_PROJECT_ENTRY_NAME,
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
+                PROJECT_NAME_RUNTIME_ARG_NAME => "The first dex on Casper network.",
+                PROJECT_START_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
+                PROJECT_END_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
+                PROJECT_PRIVATE_RUNTIME_ARG_NAME => false,
+                PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME => "SWPR",
+                PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => 10u32,
+                PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => 1000000u32
+            },
+        )
+        .build();
+
+        builder.exec(add_project_req).expect_success().commit();
+
+        let get_project_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            GET_PROJECT_INFO_ENTRY_NAME,
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => "swapperys",
+            },
+        )
+        .build();
+        builder.exec(get_project_req).expect_success().commit();
+
+        let result: String = builder.get_value(context.ido_contract, "result");
+        assert!(result.len() > 0);
     }
 
     #[test]

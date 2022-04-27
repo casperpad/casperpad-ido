@@ -24,15 +24,15 @@ pub(crate) fn get_projects_uref() -> URef {
 }
 
 /// Writes token balance of a specified account into a dictionary.
-pub(crate) fn write_project_to(projects_uref: URef, project_id: &str, project: Project) {
+pub(crate) fn write_project_to(projects_uref: URef, project_id: String, project: Project) {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
-    storage::dictionary_put(projects_uref, &dictionary_item_key, project);
+    storage::dictionary_put(projects_uref, &dictionary_item_key, project.serialize());
 }
 
-/// Reads token balance of a specified account.
+/// Reads project info by project id
 ///
-/// If a given account does not have balances in the system, then a 0 is returned.
-pub(crate) fn read_project_from(projects_uref: URef, project_id: &str) -> Project {
+///
+pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> String {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
 
     storage::dictionary_get(projects_uref, &dictionary_item_key)
