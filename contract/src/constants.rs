@@ -32,3 +32,4 @@ pub const SET_PROJECT_TREASURY_WALLET_ENTRY_NAME: &str = "set_project_treasury_w
 pub const CREATE_PROJECT_ENTRY_NAME: &str = "add_project";
 pub const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
 pub const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";
+pub const GET_INVEST_INFO_ENTRY_NAME: &str = "get_invest_info";

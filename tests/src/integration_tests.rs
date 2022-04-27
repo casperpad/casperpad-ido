@@ -13,7 +13,7 @@ mod tests {
 
     use casper_types::{
         account::AccountHash, runtime_args, ContractHash, ContractPackageHash, Key, PublicKey,
-        RuntimeArgs, SecretKey,
+        RuntimeArgs, SecretKey, U256,
     };
 
     const MY_ACCOUNT: [u8; 32] = [7u8; 32];
@@ -36,7 +36,10 @@ mod tests {
     const PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME: &str = "token_symbol";
     const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";
     const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
-
+    const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
+    const CSPR_AMOUNT_RUNTIME_ARG_NAME: &str = "cspr_amount";
+    const GET_INVEST_INFO_ENTRY_NAME: &str = "get_invest_info";
+    const RESULT_KEY_NAME: &str = "result";
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -161,14 +164,47 @@ mod tests {
             None,
             GET_PROJECT_INFO_ENTRY_NAME,
             runtime_args! {
-                PROJECT_ID_RUNTIME_ARG_NAME => "swapperys",
+                PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
             },
         )
         .build();
         builder.exec(get_project_req).expect_success().commit();
 
-        let result: String = builder.get_value(context.ido_contract, "result");
+        let result: String = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
         assert!(result.len() > 0);
+    }
+
+    #[test]
+    fn should_add_invest() {
+        let (mut builder, context) = setup();
+        let add_invest_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            ADD_INVEST_ENTRY_NAME,
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
+                CSPR_AMOUNT_RUNTIME_ARG_NAME => U256::from(10)
+            },
+        )
+        .build();
+
+        builder.exec(add_invest_req).expect_success().commit();
+
+        let get_invest_info_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            GET_INVEST_INFO_ENTRY_NAME,
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
+            },
+        )
+        .build();
+        builder.exec(get_invest_info_req).expect_success().commit();
+
+        let result: U256 = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
+        assert_eq!(result, U256::from(10));
     }
 
     #[test]

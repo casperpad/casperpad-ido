@@ -32,12 +32,13 @@ mod projects;
 mod treasury_wallets;
 use constants::{
     CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
-    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME,
-    PROJECTS_KEY_NAME, PROJECT_END_TIME_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
-    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_RUNTIME_ARG_NAME,
-    PROJECT_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
-    RESULT_KEY_NAME, USERS_KEY_NAME, WALLET_RUNTIME_ARG_NAME,
+    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, OWNER_KEY_NAME,
+    OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_END_TIME_RUNTIME_ARG_NAME,
+    PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
+    PROJECT_RUNTIME_ARG_NAME, PROJECT_START_TIME_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, RESULT_KEY_NAME, USERS_KEY_NAME,
+    WALLET_RUNTIME_ARG_NAME,
 };
 use error::Error;
 use project::{Project, TokenInfo};
@@ -174,6 +175,7 @@ pub extern "C" fn add_invest() {
     let account: Address = detail::get_caller_address().unwrap_or_revert();
     let amount: U256 = runtime::get_named_arg(CSPR_AMOUNT_RUNTIME_ARG_NAME);
     invests::write_invest_to(project_id, account, amount);
+    // TODO receive cspr amount
     runtime::ret(CLValue::from_t(true).unwrap_or_revert());
 }
 
@@ -227,9 +229,15 @@ pub extern "C" fn call() {
         Key::from(default_treasury_wallet_uref)
     };
     // Initialize project dictionary
-    let uref: URef = storage::new_dictionary(PROJECTS_KEY_NAME).unwrap_or_revert();
     let projects_dictionary_key: Key = {
+        let uref: URef = storage::new_dictionary(PROJECTS_KEY_NAME).unwrap_or_revert();
         runtime::remove_key(PROJECTS_KEY_NAME);
+        Key::from(uref)
+    };
+
+    let invests_dictionary_key: Key = {
+        let uref: URef = storage::new_dictionary(INVESTS_KEY_NAME).unwrap_or_revert();
+        runtime::remove_key(INVESTS_KEY_NAME);
         Key::from(uref)
     };
 
@@ -239,6 +247,7 @@ pub extern "C" fn call() {
         default_treasury_wallet_key,
     );
     named_keys.insert(PROJECTS_KEY_NAME.to_string(), projects_dictionary_key);
+    named_keys.insert(INVESTS_KEY_NAME.to_string(), invests_dictionary_key);
 
     let entry_points = entry_points::default();
 
