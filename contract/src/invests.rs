@@ -27,14 +27,14 @@ fn make_dictionary_item_key(project_id: String, account: Address) -> String {
 /// Writes an invest for owner and spender for a specific amount.
 pub(crate) fn write_invest_to(project_id: String, account: Address, amount: U256) {
     let dictionary_item_key = make_dictionary_item_key(project_id, account);
-    let uref = detail::get_uref(INVESTS_KEY_NAME);
+    let uref = invests_uref();
     storage::dictionary_put(uref, &dictionary_item_key, amount)
 }
 
 /// Reads an invest for a owner and spender
 pub(crate) fn read_invest_from(project_id: String, account: Address) -> U256 {
     let dictionary_item_key = make_dictionary_item_key(project_id, account);
-    let uref = detail::get_uref(INVESTS_KEY_NAME);
+    let uref = invests_uref();
     storage::dictionary_get(uref, &dictionary_item_key)
         .unwrap_or_revert()
         .unwrap_or_default()

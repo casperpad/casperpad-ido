@@ -4,11 +4,11 @@ use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
 use casper_erc20::Address;
 use casper_types::URef;
 
-use crate::{constants::TREASURY_WALLET_KEY_NAME, detail};
+use crate::{constants::DEFAULT_TREASURY_WALLET_KEY_NAME, detail};
 
 #[inline]
 pub(crate) fn default_treasury_wallet_uref() -> URef {
-    detail::get_uref(TREASURY_WALLET_KEY_NAME)
+    detail::get_uref(DEFAULT_TREASURY_WALLET_KEY_NAME)
 }
 
 /// Reads a owner from a specified [`URef`].

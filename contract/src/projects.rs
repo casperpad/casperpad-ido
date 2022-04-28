@@ -4,7 +4,7 @@ use alloc::string::{String, ToString};
 use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::{bytesrepr::ToBytes, URef};
 
-use crate::{constants::PROJECTS_KEY_NAME, detail, project::Project};
+use crate::{constants::PROJECTS_KEY_NAME, detail};
 
 /// Creates a dictionary item key for a dictionary item.
 #[inline]
@@ -24,15 +24,16 @@ pub(crate) fn get_projects_uref() -> URef {
 }
 
 /// Writes token balance of a specified account into a dictionary.
-pub(crate) fn write_project_to(projects_uref: URef, project_id: String, project: Project) {
-    let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
-    storage::dictionary_put(projects_uref, &dictionary_item_key, project.serialize());
+pub(crate) fn write_project_to(projects_uref: URef, project_id: String) {
+    let dictionary_item_key = make_dictionary_item_key(project_id.clone().to_string());
+    let uref = storage::new_dictionary(project_id.as_str()).unwrap_or_revert();
+    storage::dictionary_put(projects_uref, &dictionary_item_key, uref);
 }
 
 /// Reads project info by project id
 ///
 ///
-pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> String {
+pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> URef {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
 
     storage::dictionary_get(projects_uref, &dictionary_item_key)

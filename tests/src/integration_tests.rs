@@ -12,7 +12,7 @@ mod tests {
     };
 
     use casper_types::{
-        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, Key, PublicKey,
+        account::AccountHash, runtime_args, ContractHash, ContractPackageHash, PublicKey,
         RuntimeArgs, SecretKey, U256,
     };
 
@@ -40,6 +40,9 @@ mod tests {
     const CSPR_AMOUNT_RUNTIME_ARG_NAME: &str = "cspr_amount";
     const GET_INVEST_INFO_ENTRY_NAME: &str = "get_invest_info";
     const RESULT_KEY_NAME: &str = "result";
+    const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
+    const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
+    const GET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "get_default_treasury_wallet";
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -136,6 +139,58 @@ mod tests {
     }
 
     #[test]
+    fn should_set_default_treasury_wallet() {
+        let (mut builder, context) = setup();
+        let get_default_treasury_wallet_req =
+            ExecuteRequestBuilder::versioned_contract_call_by_hash(
+                *DEFAULT_ACCOUNT_ADDR,
+                context.ido_contract_package,
+                None,
+                GET_DEFAULT_TREASURY_WALLET_ENTRY_NAME,
+                runtime_args! {},
+            )
+            .build();
+        builder
+            .exec(get_default_treasury_wallet_req)
+            .expect_success()
+            .commit();
+        let result_of_query: Address = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
+        assert_eq!(result_of_query, Address::from(*DEFAULT_ACCOUNT_ADDR)); // *DEFAULT_ACCOUNT_ADDR
+
+        let set_default_treasury_wallet_req =
+            ExecuteRequestBuilder::versioned_contract_call_by_hash(
+                *DEFAULT_ACCOUNT_ADDR,
+                context.ido_contract_package,
+                None,
+                SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME,
+                runtime_args! {
+                    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME => Address::from(account2())
+                },
+            )
+            .build();
+        builder
+            .exec(set_default_treasury_wallet_req)
+            .expect_success()
+            .commit();
+
+        let get_default_treasury_wallet_req =
+            ExecuteRequestBuilder::versioned_contract_call_by_hash(
+                *DEFAULT_ACCOUNT_ADDR,
+                context.ido_contract_package,
+                None,
+                GET_DEFAULT_TREASURY_WALLET_ENTRY_NAME,
+                runtime_args! {},
+            )
+            .build();
+        builder
+            .exec(get_default_treasury_wallet_req)
+            .expect_success()
+            .commit();
+        let result_of_query: Address = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
+        assert_eq!(result_of_query, Address::from(account2())); // *DEFAULT_ACCOUNT_ADDR
+    }
+
+    #[test]
     fn should_add_project() {
         let (mut builder, context) = setup();
         let add_project_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
@@ -151,7 +206,8 @@ mod tests {
                 PROJECT_PRIVATE_RUNTIME_ARG_NAME => false,
                 PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME => "SWPR",
                 PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => 10u32,
-                PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => 1000000u32
+                PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => 1000000u32,
+                TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR,
             },
         )
         .build();
@@ -171,7 +227,7 @@ mod tests {
         builder.exec(get_project_req).expect_success().commit();
 
         let result: String = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
-        assert!(result.len() > 0);
+        assert_ne!(result, "");
     }
 
     #[test]
