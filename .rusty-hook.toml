@@ -1,0 +1,7 @@
+[hooks]
+pre-commit = "make test"
+pre-push = ["make check-lint"]
+post-commit = "echo yay"
+
+[logging]
+verbose = true

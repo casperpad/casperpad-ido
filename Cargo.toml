@@ -1,0 +1,6 @@
+[package]
+name = "Casper_Ido"
+version = "0.1.0"
+edition = "2021"
+[dev-dependencies]
+rusty-hook = "^0.11.2"
