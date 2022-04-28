@@ -14,8 +14,9 @@ pub const CSPR_AMOUNT_RUNTIME_ARG_NAME: &str = "cspr_amount";
 // runtime arguments for create project
 pub const PROJECT_ID_RUNTIME_ARG_NAME: &str = "id";
 pub const PROJECT_NAME_RUNTIME_ARG_NAME: &str = "name";
-pub const PROJECT_START_TIME_RUNTIME_ARG_NAME: &str = "start_time";
-pub const PROJECT_END_TIME_RUNTIME_ARG_NAME: &str = "end_time";
+pub const PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME: &str = "sale_start_time";
+pub const PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME: &str = "sale_end_time";
+pub const PROJECT_OPEN_TIME_RUNTIME_ARG_NAME: &str = "open_time";
 pub const PROJECT_PRIVATE_RUNTIME_ARG_NAME: &str = "private";
 pub const PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME: &str = "token_symbol";
 pub const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";

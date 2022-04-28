@@ -32,9 +32,10 @@ mod projects;
 use constants::{
     CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
     DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, OWNER_KEY_NAME,
-    OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_END_TIME_RUNTIME_ARG_NAME,
-    PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
-    PROJECT_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+    OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
+    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+    PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
     PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
     RESULT_KEY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME, USERS_KEY_NAME,
 };
@@ -93,8 +94,10 @@ pub extern "C" fn add_project() {
     owner::only_owner();
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
     let project_name: String = runtime::get_named_arg(PROJECT_NAME_RUNTIME_ARG_NAME);
-    let project_start_time: i64 = runtime::get_named_arg(PROJECT_START_TIME_RUNTIME_ARG_NAME);
-    let project_end_time: i64 = runtime::get_named_arg(PROJECT_END_TIME_RUNTIME_ARG_NAME);
+    let project_sale_start_time: i64 =
+        runtime::get_named_arg(PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME);
+    let project_sale_end_time: i64 = runtime::get_named_arg(PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME);
+    let project_open_time: i64 = runtime::get_named_arg(PROJECT_OPEN_TIME_RUNTIME_ARG_NAME);
     let project_private: bool = runtime::get_named_arg(PROJECT_PRIVATE_RUNTIME_ARG_NAME);
     let project_token_symbol: String =
         runtime::get_named_arg(PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME);
@@ -115,8 +118,9 @@ pub extern "C" fn add_project() {
         &project_id,
         &project_name,
         project_private,
-        project_start_time,
-        project_end_time,
+        project_sale_start_time,
+        project_sale_end_time,
+        project_open_time,
         treasury_wallet,
         project_token_price,
         project_token_symbol,

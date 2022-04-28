@@ -18,12 +18,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::{
-        PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME, PROJECT_END_TIME_RUNTIME_ARG_NAME,
-        PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
-        PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_START_TIME_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
-        TREASURY_WALLET_RUNTIME_ARG_NAME,
+        PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
+        PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+        PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+        PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
     projects,
 };
@@ -42,8 +42,9 @@ pub struct Project {
     pub id: String,
     pub name: String,
     pub private: bool,
-    pub start_time: i64,
-    pub end_time: i64,
+    pub sale_start_time: i64,
+    pub sale_end_time: i64,
+    pub open_time: i64,
     pub token_price: u32,
     pub token_symbol: String,
     pub total_supply: u32,
@@ -58,8 +59,9 @@ impl Project {
         id: &str,
         name: &str,
         private: bool,
-        start_time: i64,
-        end_time: i64,
+        sale_start_time: i64,
+        sale_end_time: i64,
+        open_time: i64,
         treasury_wallet: AccountHash,
         token_price: u32,
         token_symbol: String,
@@ -72,8 +74,9 @@ impl Project {
             id: String::from(id),
             name: String::from(name),
             private,
-            start_time,
-            end_time,
+            sale_start_time,
+            sale_end_time,
+            open_time,
             treasury_wallet,
             status,
             claim_status,
@@ -147,13 +150,18 @@ pub(crate) fn write_project(project: Project) {
     );
     write_project_field(
         project.id.clone(),
-        PROJECT_START_TIME_RUNTIME_ARG_NAME,
-        project.start_time,
+        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
+        project.sale_start_time,
     );
     write_project_field(
         project.id.clone(),
-        PROJECT_END_TIME_RUNTIME_ARG_NAME,
-        project.end_time,
+        PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+        project.sale_end_time,
+    );
+    write_project_field(
+        project.id.clone(),
+        PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+        project.open_time,
     );
     write_project_field(
         project.id.clone(),
@@ -185,8 +193,11 @@ pub(crate) fn write_project(project: Project) {
 pub(crate) fn read_project(_id: &str) -> String {
     let project_id: String = read_project_field(_id, PROJECT_ID_RUNTIME_ARG_NAME);
     let project_name: String = read_project_field(_id, PROJECT_NAME_RUNTIME_ARG_NAME);
-    let project_start_time: i64 = read_project_field(_id, PROJECT_START_TIME_RUNTIME_ARG_NAME);
-    let project_end_time: i64 = read_project_field(_id, PROJECT_END_TIME_RUNTIME_ARG_NAME);
+    let project_sale_start_time: i64 =
+        read_project_field(_id, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME);
+    let project_sale_end_time: i64 =
+        read_project_field(_id, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME);
+    let project_open_time: i64 = read_project_field(_id, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME);
     let project_private: bool = read_project_field(_id, PROJECT_PRIVATE_RUNTIME_ARG_NAME);
     let project_token_symbol: String =
         read_project_field(_id, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME);
@@ -204,8 +215,9 @@ pub(crate) fn read_project(_id: &str) -> String {
         &project_id,
         &project_name,
         project_private,
-        project_start_time,
-        project_end_time,
+        project_sale_start_time,
+        project_sale_end_time,
+        project_open_time,
         treasury_wallet,
         project_token_price,
         project_token_symbol,

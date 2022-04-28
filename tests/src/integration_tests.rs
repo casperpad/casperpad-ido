@@ -30,8 +30,9 @@ mod tests {
     const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";
     const PROJECT_ID_RUNTIME_ARG_NAME: &str = "id";
     const PROJECT_NAME_RUNTIME_ARG_NAME: &str = "name";
-    const PROJECT_START_TIME_RUNTIME_ARG_NAME: &str = "start_time";
-    const PROJECT_END_TIME_RUNTIME_ARG_NAME: &str = "end_time";
+    const PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME: &str = "sale_start_time";
+    const PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME: &str = "sale_end_time";
+    const PROJECT_OPEN_TIME_RUNTIME_ARG_NAME: &str = "open_time";
     const PROJECT_PRIVATE_RUNTIME_ARG_NAME: &str = "private";
     const PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME: &str = "token_symbol";
     const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";
@@ -201,8 +202,9 @@ mod tests {
             runtime_args! {
                 PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
                 PROJECT_NAME_RUNTIME_ARG_NAME => "The first dex on Casper network.",
-                PROJECT_START_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
-                PROJECT_END_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
+                PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
+                PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
+                PROJECT_OPEN_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
                 PROJECT_PRIVATE_RUNTIME_ARG_NAME => false,
                 PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME => "SWPR",
                 PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => 10u32,
