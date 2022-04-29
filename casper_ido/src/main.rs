@@ -14,10 +14,10 @@ use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_erc20::Address;
+use casper_erc20::{Address, ERC20};
 use casper_types::{
-    account::AccountHash, bytesrepr::ToBytes, contracts::NamedKeys, CLTyped, CLValue, Key, URef,
-    U256,
+    account::AccountHash, bytesrepr::ToBytes, contracts::NamedKeys, CLTyped, CLValue, ContractHash,
+    Key, URef, U256,
 };
 
 mod constants;
@@ -36,9 +36,9 @@ use constants::{
     PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
     PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
     PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, RESULT_KEY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
-    USERS_KEY_NAME,
+    PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+    RESULT_KEY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME, USERS_KEY_NAME,
 };
 use error::Error;
 use project::{Project, Status};
@@ -106,7 +106,8 @@ pub extern "C" fn add_project() {
     let project_token_total_supply: u32 =
         runtime::get_named_arg(PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
     let treasury_wallet: AccountHash = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
-
+    let project_token_address: ContractHash =
+        runtime::get_named_arg(PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME);
     let status = Status::Completed;
 
     let users_length = U256::from(0);
@@ -123,6 +124,7 @@ pub extern "C" fn add_project() {
         project_sale_end_time,
         project_open_time,
         treasury_wallet,
+        project_token_address,
         project_token_price,
         project_token_symbol,
         project_token_total_supply,
@@ -163,6 +165,7 @@ pub extern "C" fn add_invest() {
     let amount: U256 = runtime::get_named_arg(CSPR_AMOUNT_RUNTIME_ARG_NAME);
     invests::write_invest_to(project_id, account, amount);
     // TODO receive cspr amount
+
     runtime::ret(CLValue::from_t(true).unwrap_or_revert());
 }
 
@@ -183,6 +186,12 @@ pub extern "C" fn claim() {
     // let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
     // let account: Address = detail::get_caller_address().unwrap_or_revert();
     // let schedule_id = 5;
+    // runtime::call_versioned_contract(
+    //     contract_package_hash,
+    //     contract_version,
+    //     entry_point_name,
+    //     runtime_args,
+    // )
 }
 
 #[no_mangle]

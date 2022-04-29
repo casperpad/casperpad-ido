@@ -6,7 +6,7 @@ use casper_contract::{
 use casper_types::{
     account::AccountHash,
     bytesrepr::{self, FromBytes, ToBytes},
-    CLType, CLTyped, Key, URef, U256,
+    CLType, CLTyped, ContractHash, Key, URef, U256,
 };
 
 use alloc::{
@@ -22,9 +22,9 @@ use crate::{
         PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
         PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
         PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
-        TREASURY_WALLET_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+        PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
     projects,
 };
@@ -94,6 +94,7 @@ pub struct Project {
     pub sale_start_time: i64,
     pub sale_end_time: i64,
     pub open_time: i64,
+    pub token_address: ContractHash,
     pub token_price: u32,
     pub token_symbol: String,
     pub total_supply: u32,
@@ -112,6 +113,7 @@ impl Project {
         sale_end_time: i64,
         open_time: i64,
         treasury_wallet: AccountHash,
+        token_address: ContractHash,
         token_price: u32,
         token_symbol: String,
         total_supply: u32,
@@ -129,6 +131,7 @@ impl Project {
             treasury_wallet,
             status,
             claim_status,
+            token_address,
             token_price,
             token_symbol,
             total_supply,
@@ -261,7 +264,8 @@ pub(crate) fn read_project(_id: &str) -> String {
     let project_token_total_supply: u32 =
         read_project_field(_id, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
     let treasury_wallet: AccountHash = read_project_field(_id, TREASURY_WALLET_RUNTIME_ARG_NAME);
-
+    let project_token_address: ContractHash =
+        read_project_field(_id, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME);
     let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
 
     let users_length = U256::from(0i32);
@@ -274,6 +278,7 @@ pub(crate) fn read_project(_id: &str) -> String {
         project_sale_end_time,
         project_open_time,
         treasury_wallet,
+        project_token_address,
         project_token_price,
         project_token_symbol,
         project_token_total_supply,

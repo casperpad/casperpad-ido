@@ -18,6 +18,7 @@ pub const PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME: &str = "sale_start_time";
 pub const PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME: &str = "sale_end_time";
 pub const PROJECT_OPEN_TIME_RUNTIME_ARG_NAME: &str = "open_time";
 pub const PROJECT_PRIVATE_RUNTIME_ARG_NAME: &str = "private";
+pub const PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME: &str = "token_address";
 pub const PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME: &str = "token_symbol";
 pub const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
 pub const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";

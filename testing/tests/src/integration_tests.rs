@@ -22,7 +22,7 @@ mod tests {
     const CONTRACT_KEY_NAME: &str = "casper_ido";
     const OWNER_KEY_NAME: &str = "owner";
     const CONTRACT_HASH_KEY_NAME: &str = "casper_ido_contract_hash";
-    const CONTRACT_WASM: &str = "contract.wasm";
+    const CONTRACT_WASM: &str = "casper_ido.wasm";
     const OWNER_RUNTIME_ARG_NAME: &str = "owner";
     const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
     const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
