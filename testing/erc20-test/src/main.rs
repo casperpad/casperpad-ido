@@ -32,8 +32,6 @@ const TOKEN_TOTAL_SUPPLY: u64 = 1_000_000_000;
 
 const TOKEN_OWNER_ADDRESS_1: Address = Address::Account(AccountHash::new([42; 32]));
 const TOKEN_OWNER_AMOUNT_1: u64 = 1_000_000;
-const TOKEN_OWNER_ADDRESS_2: Address = Address::Contract(ContractPackageHash::new([42; 32]));
-const TOKEN_OWNER_AMOUNT_2: u64 = 2_000_000;
 
 #[derive(Default)]
 struct TestToken {
@@ -144,9 +142,5 @@ fn call() {
 
     test_token
         .mint(TOKEN_OWNER_ADDRESS_1, U256::from(TOKEN_OWNER_AMOUNT_1))
-        .unwrap_or_revert();
-
-    test_token
-        .mint(TOKEN_OWNER_ADDRESS_2, U256::from(TOKEN_OWNER_AMOUNT_2))
         .unwrap_or_revert();
 }

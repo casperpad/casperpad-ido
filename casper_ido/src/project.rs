@@ -215,6 +215,12 @@ pub(crate) fn write_project(project: Project) {
         PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
         project.open_time,
     );
+
+    write_project_field(
+        project.id.clone(),
+        PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
+        project.token_address,
+    );
     write_project_field(
         project.id.clone(),
         PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,

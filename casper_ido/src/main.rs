@@ -143,11 +143,8 @@ pub extern "C" fn get_project_info_by_id() {
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
 
     let project = project::read_project(project_id.as_str());
-
-    // let deserialized: Project = Project::deserialize(project.clone());
-    // let status: U256 = storage::read_or_revert(*deserialized.status.as_uref().unwrap());
-    store_result(project);
-    // runtime::ret(CLValue::from_t(project).unwrap_or_revert());
+    store_result(project.clone());
+    runtime::ret(CLValue::from_t(project).unwrap_or_revert());
 }
 
 #[no_mangle]

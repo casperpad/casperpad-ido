@@ -20,9 +20,13 @@ mod tests {
     // Define `KEY` constant to match that in the contract.
 
     const CONTRACT_KEY_NAME: &str = "casper_ido";
+    const ERC20_TEST_CONTRACT_KEY_NAME: &str = "test_contract";
+    const ERC20_TEST_CALL_KEY: &str = "erc20_test_call";
     const OWNER_KEY_NAME: &str = "owner";
     const CONTRACT_HASH_KEY_NAME: &str = "casper_ido_contract_hash";
-    const CONTRACT_WASM: &str = "casper_ido.wasm";
+    const IDO_CONTRACT_WASM: &str = "casper_ido.wasm";
+    const ERC20_TEST_CONTRACT_WASM: &str = "erc20_test.wasm";
+    const ERC20_TEST_CALL_CONTRACT_WASM: &str = "erc20_test_call.wasm";
     const OWNER_RUNTIME_ARG_NAME: &str = "owner";
     const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
     const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
@@ -44,26 +48,54 @@ mod tests {
     const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
     const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
     const GET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "get_default_treasury_wallet";
+    const PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME: &str = "token_address";
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
         ido_contract: ContractHash,
+        erc20_test_contract: ContractHash,
+        erc20_test_call_contract: ContractHash,
     }
 
     fn setup() -> (InMemoryWasmTestBuilder, TestContext) {
         let mut builder = InMemoryWasmTestBuilder::default();
+
         builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST);
 
-        let install_contract = ExecuteRequestBuilder::standard(
+        let install_ido_contract = ExecuteRequestBuilder::standard(
             *DEFAULT_ACCOUNT_ADDR,
-            CONTRACT_WASM,
+            IDO_CONTRACT_WASM,
             runtime_args! {
                 DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR
             },
         )
         .build();
 
-        builder.exec(install_contract).expect_success().commit();
+        builder.exec(install_ido_contract).expect_success().commit();
+
+        let install_erc20_test_contract = ExecuteRequestBuilder::standard(
+            *DEFAULT_ACCOUNT_ADDR,
+            ERC20_TEST_CONTRACT_WASM,
+            runtime_args! {},
+        )
+        .build();
+
+        builder
+            .exec(install_erc20_test_contract)
+            .expect_success()
+            .commit();
+
+        let install_erc20_test_call_contract = ExecuteRequestBuilder::standard(
+            *DEFAULT_ACCOUNT_ADDR,
+            ERC20_TEST_CALL_CONTRACT_WASM,
+            runtime_args! {},
+        )
+        .build();
+
+        builder
+            .exec(install_erc20_test_call_contract)
+            .expect_success()
+            .commit();
 
         let account = builder
             .get_account(*DEFAULT_ACCOUNT_ADDR)
@@ -83,24 +115,34 @@ mod tests {
             .map(ContractHash::new)
             .expect("should have contract hash");
 
+        let erc20_test_contract = account
+            .named_keys()
+            .get(ERC20_TEST_CONTRACT_KEY_NAME)
+            .and_then(|key| key.into_hash())
+            .map(ContractHash::new)
+            .expect("should have contract hash");
+        let erc20_test_call_contract = account
+            .named_keys()
+            .get(ERC20_TEST_CALL_KEY)
+            .and_then(|key| key.into_hash())
+            .map(ContractHash::new)
+            .expect("should have contract hash");
+
         let test_context = TestContext {
             ido_contract_package,
             ido_contract,
+            erc20_test_contract,
+            erc20_test_call_contract,
         };
         (builder, test_context)
     }
 
     fn account2() -> AccountHash {
-        const MY_ACCOUNT: [u8; 32] = [7u8; 32];
-        let secret_key = SecretKey::ed25519_from_bytes(MY_ACCOUNT).unwrap();
-        let public_key = PublicKey::from(&secret_key);
-
-        // Create an AccountHash from a public key.
-        AccountHash::from(&public_key)
+        AccountHash::new([42; 32])
     }
 
     #[test]
-    fn should_install_contract() {
+    fn should_install_ido_contract() {
         setup();
     }
 
@@ -194,6 +236,7 @@ mod tests {
     #[test]
     fn should_add_project() {
         let (mut builder, context) = setup();
+        print!("{}", context.erc20_test_contract);
         let add_project_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,
@@ -210,6 +253,7 @@ mod tests {
                 PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => 10u32,
                 PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => 1000000u32,
                 TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR,
+                PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME => context.erc20_test_contract
             },
         )
         .build();
@@ -271,7 +315,7 @@ mod tests {
         let public_key = PublicKey::from(&secret_key);
         let account_addr = AccountHash::from(&public_key);
 
-        let session_code = PathBuf::from(CONTRACT_WASM);
+        let session_code = PathBuf::from(IDO_CONTRACT_WASM);
         let session_args = RuntimeArgs::new();
 
         let deploy_item = DeployItemBuilder::new()
