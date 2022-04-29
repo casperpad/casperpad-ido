@@ -35,9 +35,10 @@ use constants::{
     OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
     PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
     PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
-    RESULT_KEY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME, USERS_KEY_NAME,
+    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, RESULT_KEY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+    USERS_KEY_NAME,
 };
 use error::Error;
 use project::{Project, Status};
@@ -106,7 +107,7 @@ pub extern "C" fn add_project() {
         runtime::get_named_arg(PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
     let treasury_wallet: AccountHash = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
 
-    let status = Status::Upcoming;
+    let status = Status::Completed;
 
     let users_length = U256::from(0);
     let claim_status_key = {
@@ -136,6 +137,7 @@ pub extern "C" fn add_project() {
 
 #[no_mangle]
 pub extern "C" fn get_project_info_by_id() {
+    owner::only_owner();
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
 
     let project = project::read_project(project_id.as_str());
@@ -144,6 +146,14 @@ pub extern "C" fn get_project_info_by_id() {
     // let status: U256 = storage::read_or_revert(*deserialized.status.as_uref().unwrap());
     store_result(project);
     // runtime::ret(CLValue::from_t(project).unwrap_or_revert());
+}
+
+#[no_mangle]
+pub extern "C" fn set_project_status() {
+    owner::only_owner();
+    let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
+    let project_status: Status = runtime::get_named_arg(PROJECT_STATUS_RUNTIME_ARG_NAME);
+    project::write_project_field(project_id, PROJECT_STATUS_RUNTIME_ARG_NAME, project_status);
 }
 
 #[no_mangle]

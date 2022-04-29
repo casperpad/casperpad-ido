@@ -5,8 +5,8 @@ use casper_contract::{
 
 use casper_types::{
     account::AccountHash,
-    bytesrepr::{FromBytes, ToBytes},
-    CLTyped, Key, URef, U256,
+    bytesrepr::{self, FromBytes, ToBytes},
+    CLType, CLTyped, Key, URef, U256,
 };
 
 use alloc::{
@@ -21,20 +21,69 @@ use crate::{
         PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
         PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
         PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
-        PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
+        TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
     projects,
 };
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+// #[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Status {
-    Upcoming,
-    Going,
-    Completed,
-    Paused,
-    Cancelled,
+    Upcoming = 1,
+    Going = 2,
+    Completed = 3,
+    Paused = 4,
+    Cancelled = 5,
+}
+
+impl Status {
+    fn from_u32(value: u32) -> Status {
+        match value {
+            1 => Status::Upcoming,
+            2 => Status::Going,
+            3 => Status::Completed,
+            4 => Status::Paused,
+            5 => Status::Cancelled,
+            _ => panic!("Unknown value: {}", value),
+        }
+    }
+}
+
+impl CLTyped for Status {
+    fn cl_type() -> CLType {
+        CLType::U32
+    }
+}
+
+// Serialize for Project
+impl ToBytes for Status {
+    #[inline(always)]
+    fn to_bytes(&self) -> Result<Vec<u8>, bytesrepr::Error> {
+        Ok((*self as u32).into_bytes().unwrap().to_vec())
+    }
+
+    #[inline(always)]
+    fn serialized_length(&self) -> usize {
+        32
+    }
+
+    fn into_bytes(self) -> Result<Vec<u8>, casper_types::bytesrepr::Error>
+    where
+        Self: Sized,
+    {
+        self.to_bytes()
+    }
+}
+
+// Deserialize for Project
+impl FromBytes for Status {
+    fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), bytesrepr::Error> {
+        let (result, remainder) = u32::from_bytes(bytes).unwrap();
+        let project: Status = Status::from_u32(result);
+        Ok((project, remainder))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -178,6 +227,12 @@ pub(crate) fn write_project(project: Project) {
         PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
         project.total_supply,
     );
+
+    write_project_field(
+        project.id.clone(),
+        PROJECT_STATUS_RUNTIME_ARG_NAME,
+        project.status,
+    );
     write_project_field(
         project.id.clone(),
         PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME,
@@ -207,7 +262,7 @@ pub(crate) fn read_project(_id: &str) -> String {
         read_project_field(_id, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
     let treasury_wallet: AccountHash = read_project_field(_id, TREASURY_WALLET_RUNTIME_ARG_NAME);
 
-    let status = Status::Upcoming;
+    let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
 
     let users_length = U256::from(0i32);
     let claim_status_key: Key = read_project_field(_id, PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME);

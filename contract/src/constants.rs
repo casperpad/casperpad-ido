@@ -23,6 +23,7 @@ pub const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
 pub const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";
 pub const PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME: &str = "claim_status";
 pub const PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME: &str = "users_length";
+pub const PROJECT_STATUS_RUNTIME_ARG_NAME: &str = "status";
 pub const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
 
 // ENTRY_POINT_NAMES
