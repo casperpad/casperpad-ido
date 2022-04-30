@@ -1,10 +1,13 @@
 //! Implementation of projects.
 use alloc::string::{String, ToString};
 
-use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
+use casper_contract::{
+    contract_api::{runtime, storage},
+    unwrap_or_revert::UnwrapOrRevert,
+};
 use casper_types::{bytesrepr::ToBytes, URef};
 
-use crate::{constants::PROJECTS_KEY_NAME, detail};
+use crate::{constants::PROJECTS_KEY_NAME, detail, error::Error};
 
 /// Creates a dictionary item key for a dictionary item.
 #[inline]
@@ -39,4 +42,15 @@ pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> URef
     storage::dictionary_get(projects_uref, &dictionary_item_key)
         .unwrap_or_revert()
         .unwrap()
+}
+
+pub(crate) fn only_exist_project(projects_uref: URef, project_id: String) {
+    let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
+
+    let uref =
+        storage::dictionary_get::<URef>(projects_uref, &dictionary_item_key).unwrap_or_revert();
+    match uref {
+        Some(_) => (),
+        None => runtime::revert(Error::NotExistProject),
+    }
 }

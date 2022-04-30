@@ -2,13 +2,11 @@
 members = [
     "casper_ido",
     "testing/tests",
-    "testing/erc20-test",
     "testing/erc20-test-call",
 ]
 default-members = [
     "casper_ido",
     "testing/tests",
-    "testing/erc20-test",
     "testing/erc20-test-call",
 ]
 

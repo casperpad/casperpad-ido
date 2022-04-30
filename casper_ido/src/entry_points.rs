@@ -13,8 +13,9 @@ use crate::constants::{
     OWNER_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
     PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
     PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME,
+    PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+    SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME, SET_PROJECT_STATUS_ENTRY_NAME,
     TRANSFER_OWNERSHIP_ENRTY_NAME,
 };
 
@@ -81,6 +82,19 @@ pub fn add_project() -> EntryPoint {
     )
 }
 
+pub fn set_project_status() -> EntryPoint {
+    EntryPoint::new(
+        SET_PROJECT_STATUS_ENTRY_NAME,
+        vec![
+            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(PROJECT_STATUS_RUNTIME_ARG_NAME, CLType::U32),
+        ],
+        <()>::cl_type(),
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    )
+}
+
 pub fn get_project_info_by_id() -> EntryPoint {
     EntryPoint::new(
         GET_PROJECT_INFO_ENTRY_NAME,
@@ -131,6 +145,7 @@ pub fn default() -> EntryPoints {
     entry_points.add_entry_point(get_project_info_by_id());
     entry_points.add_entry_point(add_invest());
     entry_points.add_entry_point(get_invest_info());
+    entry_points.add_entry_point(set_project_status());
 
     entry_points
 }

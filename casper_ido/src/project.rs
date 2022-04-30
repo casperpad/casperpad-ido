@@ -26,6 +26,7 @@ use crate::{
         PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
         PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
+    error::Error,
     projects,
 };
 // #[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -39,7 +40,7 @@ pub enum Status {
 }
 
 impl Status {
-    fn from_u32(value: u32) -> Status {
+    pub fn from_u32(value: u32) -> Status {
         match value {
             1 => Status::Upcoming,
             2 => Status::Going,
@@ -252,6 +253,16 @@ pub(crate) fn write_project(project: Project) {
         PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
         project.users_length,
     );
+}
+
+pub(crate) fn only_active_project(_id: &str) {
+    let projects_uref = projects::get_projects_uref();
+    projects::only_exist_project(projects_uref, _id.to_string());
+    let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
+    match status {
+        Status::Going => (),
+        _ => runtime::revert(Error::PermissionDenied),
+    }
 }
 
 pub(crate) fn read_project(_id: &str) -> String {

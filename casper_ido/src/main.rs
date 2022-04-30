@@ -19,7 +19,6 @@ use casper_types::{
     account::AccountHash, bytesrepr::ToBytes, contracts::NamedKeys, CLTyped, CLValue, ContractHash,
     Key, URef, U256,
 };
-
 mod constants;
 mod default_treasury_wallet;
 mod detail;
@@ -108,7 +107,7 @@ pub extern "C" fn add_project() {
     let treasury_wallet: AccountHash = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
     let project_token_address: ContractHash =
         runtime::get_named_arg(PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME);
-    let status = Status::Completed;
+    let status = Status::Upcoming;
 
     let users_length = U256::from(0);
     let claim_status_key = {
@@ -150,14 +149,22 @@ pub extern "C" fn get_project_info_by_id() {
 #[no_mangle]
 pub extern "C" fn set_project_status() {
     owner::only_owner();
+
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
-    let project_status: Status = runtime::get_named_arg(PROJECT_STATUS_RUNTIME_ARG_NAME);
-    project::write_project_field(project_id, PROJECT_STATUS_RUNTIME_ARG_NAME, project_status);
+    let projects_uref = projects::get_projects_uref();
+    projects::only_exist_project(projects_uref, project_id.clone());
+    let project_status: u32 = runtime::get_named_arg(PROJECT_STATUS_RUNTIME_ARG_NAME);
+    project::write_project_field(
+        project_id,
+        PROJECT_STATUS_RUNTIME_ARG_NAME,
+        Status::from_u32(project_status),
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn add_invest() {
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
+    project::only_active_project(project_id.as_str());
     let account: Address = detail::get_caller_address().unwrap_or_revert();
     let amount: U256 = runtime::get_named_arg(CSPR_AMOUNT_RUNTIME_ARG_NAME);
     invests::write_invest_to(project_id, account, amount);

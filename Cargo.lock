@@ -425,15 +425,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "erc20-test"
-version = "0.1.0"
-dependencies = [
- "casper-contract",
- "casper-erc20",
- "casper-types",
-]
-
-[[package]]
 name = "erc20-test-call"
 version = "0.1.0"
 dependencies = [

@@ -1,4 +1,4 @@
-ALL_CONTRACTS = casper_ido erc20-test erc20-test-call
+ALL_CONTRACTS = casper_ido erc20-test-call
 CONTRACT_TARGET_DIR = target/wasm32-unknown-unknown/release
 
 prepare:
