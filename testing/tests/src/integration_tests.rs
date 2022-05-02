@@ -1,10 +1,12 @@
 #![feature(map_first_last)]
 
+mod utils;
+
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use casper_erc20::Address;
+    use rs_merkle::{algorithms::Sha256, Hasher, MerkleProof, MerkleTree};
+    use std::{convert::TryFrom, path::PathBuf};
 
     use casper_engine_test_support::{
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, ARG_AMOUNT,
@@ -16,6 +18,8 @@ mod tests {
         account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, ContractHash,
         ContractPackageHash, Key, PublicKey, RuntimeArgs, SecretKey, U256,
     };
+
+    use crate::utils::Schedule;
 
     const MY_ACCOUNT: [u8; 32] = [7u8; 32];
     // Define `KEY` constant to match that in the contract.
@@ -55,6 +59,13 @@ mod tests {
     const RESULT_KEY: &str = "result";
     const SET_PROJECT_STATUS_ENTRY_NAME: &str = "set_project_status";
     const PROJECT_STATUS_RUNTIME_ARG_NAME: &str = "status";
+    const PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME: &str = "capacity_usd";
+    const PROJECT_SCHEDULES_RUNTIME_ARG_NAME: &str = "schedules";
+    const MERKLE_ROOT_RUNTIME_ARG_NAME: &str = "merkle_root";
+    const SET_MERKLE_ROOT_ENTRY_NAME: &str = "set_merkle_root";
+    const GET_MERKLE_ROOT_ENTRY_NAME: &str = "get_merkle_root";
+    const CLAIM_ENTRY_NAME: &str = "claim";
+    const PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME: &str = "reward_multiply";
 
     // ERC20
     // const CHECK_TOTAL_SUPPLY_ENTRY_POINT_NAME: &str = "check_total_supply";
@@ -71,6 +82,7 @@ mod tests {
     const METHOD_TRANSFER_AS_STORED_CONTRACT: &str = "transfer_as_stored_contract";
     const ARG_TOKEN_CONTRACT: &str = "token_contract";
     // const SPENDER_RUNTIME_ARG_NAME: &str = "spender";
+
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -81,10 +93,10 @@ mod tests {
 
     fn get_test_result<T: FromBytes + CLTyped>(
         builder: &mut InMemoryWasmTestBuilder,
-        erc20_test_contract_hash: ContractPackageHash,
+        contract_package_hash: ContractPackageHash,
     ) -> T {
         let contract_package = builder
-            .get_contract_package(erc20_test_contract_hash)
+            .get_contract_package(contract_package_hash)
             .expect("should have contract package");
         let enabled_versions = contract_package.enabled_versions();
         let (_version, contract_hash) = enabled_versions
@@ -118,7 +130,7 @@ mod tests {
                 "name" => String::from("test token"),
                 "symbol" => String::from("TTT"),
                 "decimals" => 18u8,
-                "total_supply" => U256::from(1_000_000_000u64),
+                "total_supply" => U256::from(5000),
             },
         )
         .build();
@@ -180,8 +192,58 @@ mod tests {
         (builder, test_context)
     }
 
+    fn get_merkle_data(index: usize) -> (Vec<u8>, Vec<u8>, usize) {
+        let leaves = [
+            Sha256::hash(account2().as_bytes()),
+            Sha256::hash(account3().as_bytes()),
+        ];
+        let merkle_tree = MerkleTree::<Sha256>::from_leaves(&leaves);
+        let indices_to_prove = vec![index];
+
+        let leaves_to_prove = [Sha256::hash(account2().as_bytes())];
+        let merkle_proof = merkle_tree.proof(&indices_to_prove);
+        let indices_to_prove = vec![0];
+        let merkle_root = merkle_tree
+            .root()
+            .ok_or("couldn't get the merkle root")
+            .unwrap();
+        // Serialize proof to pass it to the client
+
+        assert!(merkle_proof.verify(
+            merkle_root,
+            &indices_to_prove,
+            &leaves_to_prove,
+            leaves.len()
+        ));
+        let proof_bytes = merkle_proof.to_bytes();
+
+        print!("{:?}", merkle_root);
+        (merkle_root.to_vec(), proof_bytes, leaves.len())
+    }
+
     fn account2() -> AccountHash {
         AccountHash::new([42; 32])
+    }
+    fn account3() -> AccountHash {
+        AccountHash::new([43; 32])
+    }
+
+    fn make_set_merkle_root_request(context: TestContext) -> ExecuteRequest {
+        let (merkle_root, _, _) = get_merkle_data(0);
+        let root = vec![
+            51u8, 65, 24, 137, 120, 125, 178, 119, 245, 2, 191, 121, 226, 141, 48, 59, 84, 228, 67,
+            79, 242, 81, 50, 156, 181, 142, 76, 61, 20, 216, 175, 193,
+        ];
+
+        ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract,
+            SET_MERKLE_ROOT_ENTRY_NAME,
+            runtime_args! {
+                MERKLE_ROOT_RUNTIME_ARG_NAME => root,
+            },
+        )
+        .build()
     }
 
     fn make_erc20_transfer_request(
@@ -253,6 +315,16 @@ mod tests {
     }
 
     fn make_add_project_req(context: TestContext) -> ExecuteRequest {
+        let schedules = vec![
+            Schedule {
+                unlock_time: 1651071253130i64,
+                unlock_percent: 20,
+            },
+            Schedule {
+                unlock_time: 1651071253130i64,
+                unlock_percent: 80,
+            },
+        ];
         ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,
@@ -266,10 +338,13 @@ mod tests {
                 PROJECT_OPEN_TIME_RUNTIME_ARG_NAME => 1651071253130i64,
                 PROJECT_PRIVATE_RUNTIME_ARG_NAME => false,
                 PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME => "SWPR",
-                PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => 10u32,
-                PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => 1000000u32,
+                PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => U256::from(10u32),
+                PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME => U256::from(1000000u32),
                 TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR,
-                PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME => context.erc20_token_contract
+                PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME => U256::from(100000),
+                PROJECT_SCHEDULES_RUNTIME_ARG_NAME => schedules,
+                PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME => context.erc20_token_contract,
+                PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME => U256::from(10005)
             },
         )
         .build()
@@ -288,6 +363,20 @@ mod tests {
             runtime_args! {
                 PROJECT_ID_RUNTIME_ARG_NAME => project_id,
                 PROJECT_STATUS_RUNTIME_ARG_NAME => status,
+
+            },
+        )
+        .build()
+    }
+
+    fn make_claim_req(project_id: &str, context: TestContext) -> ExecuteRequest {
+        ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            CLAIM_ENTRY_NAME,
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => project_id,
 
             },
         )
@@ -322,7 +411,28 @@ mod tests {
             .next()
             .expect("should have latest version");
         let result: U256 = builder.get_value(*contract_hash, RESULT_KEY_NAME);
-        assert_eq!(result, U256::from(1_000_000_000u64));
+
+        assert_eq!(result, U256::from(5000));
+    }
+
+    #[test]
+    fn should_set_merkle_root() {
+        let (mut builder, context) = setup();
+        // builder
+        //     .exec(make_set_merkle_root_request(context))
+        //     .expect_success()
+        //     .commit();
+        // let get_merkle_root_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
+        //     *DEFAULT_ACCOUNT_ADDR,
+        //     context.ido_contract_package,
+        //     None,
+        //     GET_MERKLE_ROOT_ENTRY_NAME,
+        //     runtime_args! {},
+        // )
+        // .build();
+        // builder.exec(get_merkle_root_req).expect_success().commit();
+        // let result: Vec<u8> = get_test_result(&mut builder, context.ido_contract_package);
+        // assert_eq!(result, vec![22]);
     }
 
     #[test]
@@ -331,16 +441,58 @@ mod tests {
         let erc20_transfer_req = make_erc20_transfer_request(
             Key::from(*DEFAULT_ACCOUNT_ADDR),
             &context.erc20_token_contract,
-            Key::from(context.ido_contract),
-            U256::from(10000),
+            Key::from(context.ido_contract_package),
+            U256::from(2000),
         );
         builder.exec(erc20_transfer_req).expect_success().commit();
         let balance = erc20_check_balance_of(
             &mut builder,
             &context.erc20_token_contract,
-            Key::from(context.ido_contract),
+            Key::from(context.ido_contract_package),
         );
-        assert_eq!(balance, U256::from(10000));
+        assert_eq!(balance, U256::from(2000));
+    }
+
+    #[test]
+    fn should_claim() {
+        let (mut builder, context) = setup();
+        let erc20_transfer_req = make_erc20_transfer_request(
+            Key::from(*DEFAULT_ACCOUNT_ADDR),
+            &context.erc20_token_contract,
+            Key::from(context.ido_contract_package),
+            U256::from(2000u64),
+        );
+        builder.exec(erc20_transfer_req).expect_success().commit();
+        let balance = erc20_check_balance_of(
+            &mut builder,
+            &context.erc20_token_contract,
+            Key::from(context.ido_contract_package),
+        );
+        assert_eq!(balance, U256::from(2000u64));
+
+        let balance = erc20_check_balance_of(
+            &mut builder,
+            &context.erc20_token_contract,
+            Key::from(*DEFAULT_ACCOUNT_ADDR),
+        );
+        assert_eq!(balance, U256::from(3000u64));
+
+        builder
+            .exec(make_add_project_req(context))
+            .expect_success()
+            .commit();
+        builder
+            .exec(make_claim_req("swappery", context))
+            .expect_success()
+            .commit();
+
+        let balance = erc20_check_balance_of(
+            &mut builder,
+            &context.erc20_token_contract,
+            Key::from(*DEFAULT_ACCOUNT_ADDR),
+        );
+
+        assert_eq!(balance, U256::from(3500));
     }
 
     #[test]
@@ -467,20 +619,7 @@ mod tests {
             .exec(make_set_project_status_req("swappery", 2u32, context))
             .expect_success()
             .commit();
-        // let get_project_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
-        //     *DEFAULT_ACCOUNT_ADDR,
-        //     context.ido_contract_package,
-        //     None,
-        //     GET_PROJECT_INFO_ENTRY_NAME,
-        //     runtime_args! {
-        //         PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
-        //     },
-        // )
-        // .build();
-        // builder.exec(get_project_req).expect_success().commit();
 
-        // let result: String = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
-        // assert_eq!(result, "");
         let add_invest_req = ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,

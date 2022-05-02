@@ -3,9 +3,9 @@ pub const CONTRACT_NAME_KEY_NAME: &str = "casper_ido";
 pub const OWNER_KEY_NAME: &str = "owner";
 pub const DEFAULT_TREASURY_WALLET_KEY_NAME: &str = "default_treasury_wallet";
 pub const PROJECTS_KEY_NAME: &str = "projects";
-pub const USERS_KEY_NAME: &str = "users";
 pub const INVESTS_KEY_NAME: &str = "invests";
 pub const RESULT_KEY_NAME: &str = "result";
+pub const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
 // RUNTIME_NAMES
 pub const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
 pub const OWNER_RUNTIME_ARG_NAME: &str = "owner";
@@ -24,8 +24,15 @@ pub const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
 pub const PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME: &str = "token_total_supply";
 pub const PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME: &str = "claim_status";
 pub const PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME: &str = "users_length";
+pub const PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME: &str = "capacity_usd";
+pub const PROJECT_SCHEDULES_RUNTIME_ARG_NAME: &str = "schedules";
 pub const PROJECT_STATUS_RUNTIME_ARG_NAME: &str = "status";
+pub const PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME: &str = "reward_multiply";
+pub const PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME: &str = "locked_token_amount";
+pub const PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME: &str = "unlocked_token_amount";
+pub const PROJECT_USERS_RUNTIME_ARG_NAME: &str = "users";
 pub const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
+pub const MERKLE_ROOT_RUNTIME_ARG_NAME: &str = "merkle_root";
 
 // ENTRY_POINT_NAMES
 pub const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
@@ -37,3 +44,6 @@ pub const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
 pub const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";
 pub const GET_INVEST_INFO_ENTRY_NAME: &str = "get_invest_info";
 pub const SET_PROJECT_STATUS_ENTRY_NAME: &str = "set_project_status";
+pub const SET_MERKLE_ROOT_ENTRY_NAME: &str = "set_merkle_root";
+pub const GET_MERKLE_ROOT_ENTRY_NAME: &str = "get_merkle_root";
+pub const CLAIM_ENTRY_NAME: &str = "claim";
