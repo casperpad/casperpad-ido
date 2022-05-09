@@ -19,6 +19,10 @@ pub enum Error {
     // User Error
     PermissionDenied = 41,
     NotExistProject = 42,
+    AlreadyExistProject = 43,
+    SaleEnded = 44,
+    NotValidTime = 45,
+    NotWhiteListed = 46,
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,

@@ -243,9 +243,7 @@ dependencies = [
  "casper-types",
  "chrono",
  "hex",
- "rs_merkle",
- "serde",
- "serde_json",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -1224,6 +1222,7 @@ dependencies = [
  "casper-execution-engine",
  "casper-types",
  "chrono",
+ "once_cell",
  "rs_merkle",
  "serde",
  "serde_json",
@@ -1257,6 +1256,15 @@ checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "tiny-keccak"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
+dependencies = [
+ "crunchy",
 ]
 
 [[package]]

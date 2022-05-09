@@ -4,8 +4,10 @@ pub const OWNER_KEY_NAME: &str = "owner";
 pub const DEFAULT_TREASURY_WALLET_KEY_NAME: &str = "default_treasury_wallet";
 pub const PROJECTS_KEY_NAME: &str = "projects";
 pub const INVESTS_KEY_NAME: &str = "invests";
+pub const CLAIMS_KEY_NAME: &str = "claims";
 pub const RESULT_KEY_NAME: &str = "result";
 pub const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
+pub const PURSE_KEY_NAME: &str = "purse";
 // RUNTIME_NAMES
 pub const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
 pub const OWNER_RUNTIME_ARG_NAME: &str = "owner";
@@ -33,17 +35,14 @@ pub const PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME: &str = "unlocked_token
 pub const PROJECT_USERS_RUNTIME_ARG_NAME: &str = "users";
 pub const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
 pub const MERKLE_ROOT_RUNTIME_ARG_NAME: &str = "merkle_root";
-
+pub const PROOF_RUNTIME_ARG_NAME: &str = "proof";
+pub const SCHEDULE_ID_RUNTIME_ARG_NAME: &str = "schedule_id";
 // ENTRY_POINT_NAMES
 pub const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
-pub const GET_OWNER_ENTRY_NAME: &str = "get_owner";
 pub const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
-pub const GET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "get_default_treasury_wallet";
 pub const CREATE_PROJECT_ENTRY_NAME: &str = "add_project";
 pub const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
-pub const GET_PROJECT_INFO_ENTRY_NAME: &str = "get_project_info_by_id";
-pub const GET_INVEST_INFO_ENTRY_NAME: &str = "get_invest_info";
 pub const SET_PROJECT_STATUS_ENTRY_NAME: &str = "set_project_status";
 pub const SET_MERKLE_ROOT_ENTRY_NAME: &str = "set_merkle_root";
-pub const GET_MERKLE_ROOT_ENTRY_NAME: &str = "get_merkle_root";
 pub const CLAIM_ENTRY_NAME: &str = "claim";
+pub const GET_PURSE_ENTRY_NAME: &str = "get_purse";

@@ -6,9 +6,13 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_erc20::Address;
-use casper_types::{bytesrepr::FromBytes, system::CallStackElement, ApiError, CLTyped, URef};
+use casper_types::{
+    bytesrepr::{FromBytes, ToBytes},
+    system::CallStackElement,
+    ApiError, CLTyped, Key, URef,
+};
 
-use crate::error::Error;
+use crate::{constants::RESULT_KEY_NAME, error::Error};
 
 /// Gets [`URef`] under a name.
 pub(crate) fn get_uref(name: &str) -> URef {
@@ -75,4 +79,15 @@ pub(crate) fn get_caller_address() -> Result<Address, Error> {
         .ok_or(Error::InvalidContext)?;
     let address = call_stack_element_to_address(top_of_the_stack);
     Ok(address)
+}
+
+pub(crate) fn store_result<T: CLTyped + ToBytes>(result: T) {
+    match runtime::get_key(RESULT_KEY_NAME) {
+        Some(Key::URef(uref)) => storage::write(uref, result),
+        Some(_) => unreachable!(),
+        None => {
+            let new_uref = storage::new_uref(result);
+            runtime::put_key(RESULT_KEY_NAME, new_uref.into());
+        }
+    }
 }

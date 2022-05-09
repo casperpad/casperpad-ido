@@ -19,6 +19,7 @@ fn make_dictionary_item_key(project_id: String) -> String {
     // characters.
     // Even if the preimage increased in size we still have extra space but even in case of much
     // larger preimage we can switch to base85 which has ratio of 4:5.
+
     base64::encode(&preimage)
 }
 
@@ -33,9 +34,6 @@ pub(crate) fn write_project_to(projects_uref: URef, project_id: String) {
     storage::dictionary_put(projects_uref, &dictionary_item_key, uref);
 }
 
-/// Reads project info by project id
-///
-///
 pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> URef {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
 
@@ -52,5 +50,17 @@ pub(crate) fn only_exist_project(projects_uref: URef, project_id: String) {
     match uref {
         Some(_) => (),
         None => runtime::revert(Error::NotExistProject),
+    }
+}
+
+pub(crate) fn only_not_exist_project(project_id: String) {
+    let projects_uref = get_projects_uref();
+    let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
+
+    let uref =
+        storage::dictionary_get::<URef>(projects_uref, &dictionary_item_key).unwrap_or_revert();
+    match uref {
+        Some(_) => runtime::revert(Error::AlreadyExistProject),
+        None => (),
     }
 }
