@@ -21,11 +21,10 @@ use crate::{
         PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
         PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
         PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
-        PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
-        PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+        PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
+        PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
         TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
@@ -110,7 +109,6 @@ pub struct Project {
     pub treasury_wallet: AccountHash,
     pub status: Status,
     pub users_length: U256,
-    pub reward_multiply: U256, // decimal is 3
     pub schedules: Vec<(i64, U256)>,
 }
 
@@ -131,7 +129,6 @@ impl Project {
         locked_token_amount: U256,
         unlocked_token_amount: U256,
         status: Status,
-        reward_multiply: U256,
         users_length: U256,
         schedules: Vec<(i64, U256)>,
     ) -> Self {
@@ -153,7 +150,6 @@ impl Project {
             schedules,
             locked_token_amount,
             unlocked_token_amount,
-            reward_multiply,
         }
     }
 }
@@ -285,12 +281,6 @@ pub(crate) fn write_project(project: Project) {
 
     write_project_field(
         project.id.clone(),
-        PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME,
-        project.reward_multiply,
-    );
-
-    write_project_field(
-        project.id.clone(),
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
         project.unlocked_token_amount,
     );
@@ -301,15 +291,15 @@ pub(crate) fn write_project(project: Project) {
     );
 }
 
-// pub(crate) fn only_active_project(_id: &str) {
-//     let projects_uref = projects::get_projects_uref();
-//     projects::only_exist_project(projects_uref, _id.to_string());
-//     let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
-//     match status {
-//         Status::Going => (),
-//         _ => runtime::revert(Error::PermissionDenied),
-//     }
-// }
+pub(crate) fn only_approved_project(_id: &str) {
+    let projects_uref = projects::get_projects_uref();
+    projects::only_exist_project(projects_uref, _id.to_string());
+    let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
+    match status {
+        Status::Approved => (),
+        _ => runtime::revert(Error::PermissionDenied),
+    }
+}
 
 pub(crate) fn only_sale_time(_id: &str) -> (BlockTime, BlockTime) {
     let projects_uref = projects::get_projects_uref();

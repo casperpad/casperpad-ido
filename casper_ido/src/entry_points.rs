@@ -1,23 +1,22 @@
 //! Contains definition of the entry points.
-use alloc::{boxed::Box, string::String, vec};
-
-use casper_erc20::Address;
-use casper_types::{
-    CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter,
-};
+use alloc::{boxed::Box, vec};
 
 use crate::constants::{
     ADD_INVEST_ENTRY_NAME, CLAIM_ENTRY_NAME, CREATE_PROJECT_ENTRY_NAME,
     CSPR_AMOUNT_RUNTIME_ARG_NAME, DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, GET_PURSE_ENTRY_NAME,
-    MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_RUNTIME_ARG_NAME, PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME,
-    PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
-    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
-    PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
-    PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+    MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
+    PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
+    PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
+    PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
+    PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
     SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME, SET_MERKLE_ROOT_ENTRY_NAME,
-    SET_PROJECT_STATUS_ENTRY_NAME, TRANSFER_OWNERSHIP_ENRTY_NAME,
+    SET_PROJECT_STATUS_ENTRY_NAME, TRANSFER_OWNERSHIP_ENRTY_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+};
+use casper_erc20::Address;
+use casper_types::account::AccountHash;
+use casper_types::{
+    CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter,
 };
 
 pub fn transfer_ownership() -> EntryPoint {
@@ -47,17 +46,16 @@ pub fn add_project() -> EntryPoint {
     EntryPoint::new(
         CREATE_PROJECT_ENTRY_NAME,
         vec![
-            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, String::cl_type()),
-            Parameter::new(PROJECT_NAME_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, CLType::String),
+            Parameter::new(PROJECT_NAME_RUNTIME_ARG_NAME, CLType::String),
             Parameter::new(PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, CLType::I64),
             Parameter::new(PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, CLType::I64),
             Parameter::new(PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, CLType::I64),
             Parameter::new(PROJECT_PRIVATE_RUNTIME_ARG_NAME, CLType::Bool),
-            Parameter::new(PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, CLType::Key),
             Parameter::new(PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, CLType::U256),
-            Parameter::new(PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME, CLType::U256),
-            Parameter::new(PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, CLType::U256),
             Parameter::new(PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, CLType::U256),
+            Parameter::new(TREASURY_WALLET_RUNTIME_ARG_NAME, AccountHash::cl_type()),
             Parameter::new(
                 PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
                 CLType::List(Box::new(CLType::Tuple2([
@@ -66,7 +64,7 @@ pub fn add_project() -> EntryPoint {
                 ]))),
             ),
         ],
-        CLType::Bool,
+        <()>::cl_type(),
         EntryPointAccess::Public,
         EntryPointType::Contract,
     )
@@ -76,7 +74,7 @@ pub fn set_project_status() -> EntryPoint {
     EntryPoint::new(
         SET_PROJECT_STATUS_ENTRY_NAME,
         vec![
-            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, CLType::String),
             Parameter::new(PROJECT_STATUS_RUNTIME_ARG_NAME, CLType::U32),
         ],
         <()>::cl_type(),
@@ -89,7 +87,7 @@ pub fn add_invest() -> EntryPoint {
     EntryPoint::new(
         ADD_INVEST_ENTRY_NAME,
         vec![
-            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, CLType::String),
             Parameter::new(CSPR_AMOUNT_RUNTIME_ARG_NAME, CLType::U256),
         ],
         CLType::U256,

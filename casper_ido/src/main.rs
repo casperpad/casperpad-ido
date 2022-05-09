@@ -8,11 +8,10 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 // We need to explicitly import the std alloc crate and `alloc::string::String` as we're in a
 // `no_std` environment.
 extern crate alloc;
-use core::convert::TryInto;
 
 use crate::alloc::string::{String, ToString};
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
 use casper_contract::{
     contract_api::{runtime, storage, system},
     unwrap_or_revert::UnwrapOrRevert,
@@ -21,13 +20,14 @@ use casper_erc20::{
     constants::{
         ADDRESS_RUNTIME_ARG_NAME, ALLOWANCE_ENTRY_POINT_NAME, AMOUNT_RUNTIME_ARG_NAME,
         BALANCE_OF_ENTRY_POINT_NAME, DECIMALS_ENTRY_POINT_NAME, RECIPIENT_RUNTIME_ARG_NAME,
-        SPENDER_RUNTIME_ARG_NAME, TRANSFER_ENTRY_POINT_NAME, TRANSFER_FROM_ENTRY_POINT_NAME,
+        SPENDER_RUNTIME_ARG_NAME, SYMBOL_ENTRY_POINT_NAME, TOTAL_SUPPLY_ENTRY_POINT_NAME,
+        TRANSFER_ENTRY_POINT_NAME, TRANSFER_FROM_ENTRY_POINT_NAME,
     },
     Address,
 };
 use casper_types::{
-    account::AccountHash, bytesrepr::ToBytes, contracts::NamedKeys, runtime_args, CLType, CLTyped,
-    CLValue, ContractHash, HashAddr, Key, RuntimeArgs, URef, U256,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLValue, ContractHash, Key,
+    RuntimeArgs, URef, U256,
 };
 // use std::{collections::BTreeMap, convert::TryInto};
 mod claims;
@@ -43,20 +43,16 @@ mod project;
 mod projects;
 
 use constants::{
-    CLAIMS_KEY_NAME, CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME,
-    DEFAULT_TREASURY_WALLET_KEY_NAME, DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, INVESTS_KEY_NAME,
-    MERKLE_ROOT_KEY_NAME, MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME,
-    PROJECTS_KEY_NAME, PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME,
-    PROJECT_CLAIM_STATUS_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
-    PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
-    PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
-    PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+    CLAIMS_KEY_NAME, CONTRACT_NAME_KEY_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
+    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, MERKLE_ROOT_KEY_NAME,
+    MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME,
+    PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
+    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+    PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
     PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
     PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME, PROJECT_USERS_RUNTIME_ARG_NAME,
-    PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME, RESULT_KEY_NAME, SCHEDULE_ID_RUNTIME_ARG_NAME,
-    TREASURY_WALLET_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME,
+    SCHEDULE_ID_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
 };
 
 use error::Error;
@@ -101,26 +97,30 @@ pub extern "C" fn add_project() {
     let project_sale_end_time: i64 = runtime::get_named_arg(PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME);
     let project_open_time: i64 = runtime::get_named_arg(PROJECT_OPEN_TIME_RUNTIME_ARG_NAME);
     let project_private: bool = runtime::get_named_arg(PROJECT_PRIVATE_RUNTIME_ARG_NAME);
-    let project_token_symbol: String =
-        runtime::get_named_arg(PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME);
     let project_token_price: U256 =
         runtime::get_named_arg(PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME);
-    let project_token_total_supply: U256 =
-        runtime::get_named_arg(PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME);
-    let treasury_wallet_key: Key = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
-    let treasury_wallet_hash: HashAddr = treasury_wallet_key.into_hash().unwrap();
-    let treasury_wallet = AccountHash::new(treasury_wallet_hash);
+    let treasury_wallet: AccountHash = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
 
-    let project_token_address = {
+    let project_token_address: ContractHash = {
         let project_token_address_key: Key =
             runtime::get_named_arg(PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME);
         let project_token_address_hash = project_token_address_key.into_hash().unwrap();
         ContractHash::new(project_token_address_hash)
     };
-    let status = Status::Upcoming;
-    let reward_multiply: U256 = runtime::get_named_arg(PROJECT_REWARD_MULTIPLY_RUNTIME_ARG_NAME);
-    let capacity_usd: U256 = runtime::get_named_arg(PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME);
+    let status = Status::Pending;
+
     let schedules: Vec<(i64, U256)> = runtime::get_named_arg(PROJECT_SCHEDULES_RUNTIME_ARG_NAME);
+
+    let project_token_symbol: String = runtime::call_contract(
+        project_token_address,
+        SYMBOL_ENTRY_POINT_NAME,
+        runtime_args! {},
+    );
+    let project_token_total_supply: U256 = runtime::call_contract(
+        project_token_address,
+        TOTAL_SUPPLY_ENTRY_POINT_NAME,
+        runtime_args! {},
+    );
 
     let locked_token_amount: U256 = {
         let amount_to_lock: U256 =
@@ -154,9 +154,9 @@ pub extern "C" fn add_project() {
         )
     };
 
-    let unlocked_token_amount: U256 = U256::from(0);
-    let users_length = U256::from(0);
-
+    let unlocked_token_amount: U256 = U256::from(0u32);
+    let users_length = U256::from(0u32);
+    let capacity_usd = U256::from(0u32);
     let project = Project::new(
         &project_id,
         &project_name,
@@ -173,13 +173,11 @@ pub extern "C" fn add_project() {
         locked_token_amount,
         unlocked_token_amount,
         status,
-        reward_multiply,
         users_length,
         schedules,
     );
 
     project::write_project(project);
-    runtime::ret(CLValue::from_t(true).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -210,8 +208,7 @@ pub extern "C" fn add_invest() {
     merkle_tree::verify_whitelist(proof);
     // project::only_sale_time(project_id.as_str());
 
-    // Read user invest amount
-
+    // // Read user invest amount
     // let amount: U256 = runtime::get_named_arg(CSPR_AMOUNT_RUNTIME_ARG_NAME);
 
     // let invest_amount = invests::read_invest_from(project_id.clone(), account);

@@ -2,8 +2,6 @@
 
 use alloc::string::{String, ToString};
 
-// use simple_merkle_tree::MerkleTree;
-
 use alloc::vec::Vec;
 
 use casper_contract::contract_api::runtime;
