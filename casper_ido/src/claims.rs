@@ -14,7 +14,7 @@ pub(crate) fn claims_uref() -> URef {
     detail::get_uref(CLAIMS_KEY_NAME)
 }
 
-/// Creates a dictionary item key for an (owner, spender) pair.
+/// Creates a dictionary item key for an (project_id, account, schedule_id) pair.
 fn make_dictionary_item_key(project_id: String, account: AccountHash, schedule_id: u8) -> String {
     let mut preimage = Vec::new();
     preimage.append(&mut project_id.to_bytes().unwrap_or_revert());
@@ -25,20 +25,20 @@ fn make_dictionary_item_key(project_id: String, account: AccountHash, schedule_i
     hex::encode(&key_bytes)
 }
 
-/// Writes an invest for owner and spender for a specific amount.
-pub(crate) fn write_invest_to(
+/// Writes claim amount for the specific project, account, schedule.
+pub(crate) fn write_claim_to(
     project_id: String,
     account: AccountHash,
-    amount: U256,
     schedule_id: u8,
+    amount: U256,
 ) {
     let dictionary_item_key = make_dictionary_item_key(project_id, account, schedule_id);
     let uref = claims_uref();
     storage::dictionary_put(uref, &dictionary_item_key, amount)
 }
 
-/// Reads an invest for a owner and spender
-pub(crate) fn read_invest_from(project_id: String, account: AccountHash, schedule_id: u8) -> U256 {
+/// Reads claim amount for the specific project, account, schedule.
+pub(crate) fn read_claim_from(project_id: String, account: AccountHash, schedule_id: u8) -> U256 {
     let dictionary_item_key = make_dictionary_item_key(project_id, account, schedule_id);
     let uref = claims_uref();
     storage::dictionary_get(uref, &dictionary_item_key)

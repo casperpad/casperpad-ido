@@ -43,6 +43,7 @@ pub(crate) fn write_merkle_tree_root_to(uref: URef, value: String) {
     storage::write(uref, value);
 }
 
+/// Verify if the user is in the whitelist.
 pub(crate) fn verify_whitelist(proof: Vec<(String, u8)>) {
     let converted_proof: Vec<(Vec<u8>, Position)> = proof
         .iter()
@@ -59,7 +60,7 @@ pub(crate) fn verify_whitelist(proof: Vec<(String, u8)>) {
         .as_account_hash()
         .unwrap_or_revert()
         .to_string();
-    // let caller = "58b891759929bd4ed5a9cce20b9d6e3c96a66c21386bed96040e17dd07b79fa7".to_string();
+
     let caller_bytes: &[u8] = caller.as_bytes();
 
     let mut keccak = tiny_keccak::Keccak::v256();

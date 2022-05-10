@@ -23,6 +23,8 @@ pub enum Error {
     SaleEnded = 44,
     NotValidTime = 45,
     NotWhiteListed = 46,
+    InvalidCSPRPrice = 47,
+    AlreadyClaimed = 48,
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,

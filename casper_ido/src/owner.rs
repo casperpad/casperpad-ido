@@ -24,6 +24,7 @@ pub(crate) fn write_owner_to(uref: URef, value: Address) {
     storage::write(uref, value);
 }
 
+/// Only owner can handle.
 pub(crate) fn only_owner() {
     let caller: Address = detail::get_immediate_caller_address().unwrap_or_revert();
     let owner_uref: URef = owner_uref();

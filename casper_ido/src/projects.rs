@@ -27,13 +27,14 @@ pub(crate) fn get_projects_uref() -> URef {
     detail::get_uref(PROJECTS_KEY_NAME)
 }
 
-/// Writes token balance of a specified account into a dictionary.
+/// Writes project dictionary to projects dictionary
 pub(crate) fn write_project_to(projects_uref: URef, project_id: String) {
     let dictionary_item_key = make_dictionary_item_key(project_id.clone().to_string());
     let uref = storage::new_dictionary(project_id.as_str()).unwrap_or_revert();
     storage::dictionary_put(projects_uref, &dictionary_item_key, uref);
 }
 
+/// Reads project dictionary to projects dictionary
 pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> URef {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
 
@@ -42,6 +43,7 @@ pub(crate) fn read_project_from(projects_uref: URef, project_id: String) -> URef
         .unwrap()
 }
 
+/// Project must exist
 pub(crate) fn only_exist_project(projects_uref: URef, project_id: String) {
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());
 
@@ -53,6 +55,7 @@ pub(crate) fn only_exist_project(projects_uref: URef, project_id: String) {
     }
 }
 
+/// Project must not exist.
 pub(crate) fn only_not_exist_project(project_id: String) {
     let projects_uref = get_projects_uref();
     let dictionary_item_key = make_dictionary_item_key(project_id.to_string());

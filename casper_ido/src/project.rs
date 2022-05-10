@@ -9,7 +9,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use casper_erc20::Address;
+
 use casper_types::{
     account::AccountHash,
     bytesrepr::{self, FromBytes, ToBytes},
@@ -18,12 +18,13 @@ use casper_types::{
 
 use crate::{
     constants::{
-        PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
-        PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
-        PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
-        PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
-        PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
-        PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+        CSPR_PRICE_RUNTIME_ARG_NAME, PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME,
+        PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
+        PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+        PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
+        PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
         PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
         TREASURY_WALLET_RUNTIME_ARG_NAME,
@@ -101,6 +102,7 @@ pub struct Project {
     pub open_time: i64,
     pub token_address: ContractHash,
     pub token_price: U256,
+    pub token_decimals: u8,
     pub token_symbol: String,
     pub total_supply: U256,
     pub capacity_usd: U256,
@@ -110,6 +112,7 @@ pub struct Project {
     pub status: Status,
     pub users_length: U256,
     pub schedules: Vec<(i64, U256)>,
+    pub cspr_price: U256,
 }
 
 impl Project {
@@ -123,6 +126,7 @@ impl Project {
         treasury_wallet: AccountHash,
         token_address: ContractHash,
         token_price: U256,
+        token_decimals: u8,
         token_symbol: String,
         total_supply: U256,
         capacity_usd: U256,
@@ -131,6 +135,7 @@ impl Project {
         status: Status,
         users_length: U256,
         schedules: Vec<(i64, U256)>,
+        cspr_price: U256,
     ) -> Self {
         Self {
             id: String::from(id),
@@ -143,6 +148,7 @@ impl Project {
             status,
             token_address,
             token_price,
+            token_decimals,
             token_symbol,
             total_supply,
             capacity_usd,
@@ -150,6 +156,7 @@ impl Project {
             schedules,
             locked_token_amount,
             unlocked_token_amount,
+            cspr_price,
         }
     }
 }
@@ -170,22 +177,14 @@ pub(crate) fn make_dictionary_item_key(field: String) -> String {
     hex::encode(&key_bytes)
 }
 
-pub(crate) fn make_dictionary_item_key_from_account_addr(account: Address) -> String {
-    let mut preimage = Vec::new();
-    preimage.append(&mut account.to_bytes().unwrap_or_revert());
-
-    let key_bytes = runtime::blake2b(&preimage);
-    hex::encode(&key_bytes)
-}
-
-///
+/// Writes project field.
 pub(crate) fn write_project_field<T: CLTyped + ToBytes>(project_id: String, field: &str, value: T) {
     let uref = project_dictionary_uref(project_id);
     let dictionary_item_key = make_dictionary_item_key(field.to_string());
     storage::dictionary_put(uref, &dictionary_item_key, value);
 }
 
-/// Reads an invest for a owner and spender
+/// Reads project field.
 pub(crate) fn read_project_field<T: CLTyped + ToBytes + FromBytes>(
     project_id: &str,
     field: &str,
@@ -197,6 +196,7 @@ pub(crate) fn read_project_field<T: CLTyped + ToBytes + FromBytes>(
         .unwrap_or_revert()
 }
 
+/// Writes project to the projects dictionary
 pub(crate) fn write_project(project: Project) {
     let projects_uref = projects::get_projects_uref();
     projects::write_project_to(projects_uref, project.id.clone());
@@ -246,6 +246,12 @@ pub(crate) fn write_project(project: Project) {
         PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
         project.token_price,
     );
+
+    write_project_field(
+        project.id.clone(),
+        PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
+        project.token_decimals,
+    );
     write_project_field(
         project.id.clone(),
         PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME,
@@ -289,6 +295,21 @@ pub(crate) fn write_project(project: Project) {
         PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
         project.locked_token_amount,
     );
+    write_project_field(
+        project.id.clone(),
+        CSPR_PRICE_RUNTIME_ARG_NAME,
+        project.cspr_price,
+    );
+}
+
+/// Before Sale start admin must set cspr price for estimate vest amount.
+pub(crate) fn only_valid_cspr_price(_id: &str) {
+    let projects_uref = projects::get_projects_uref();
+    projects::only_exist_project(projects_uref, _id.to_string());
+    let status: U256 = read_project_field(_id, CSPR_PRICE_RUNTIME_ARG_NAME);
+    if status.eq(&U256::zero()) {
+        runtime::revert(Error::InvalidCSPRPrice);
+    }
 }
 
 pub(crate) fn only_approved_project(_id: &str) {
@@ -301,9 +322,11 @@ pub(crate) fn only_approved_project(_id: &str) {
     }
 }
 
+/// Users can vest during the vest time.
 pub(crate) fn only_sale_time(_id: &str) -> (BlockTime, BlockTime) {
     let projects_uref = projects::get_projects_uref();
     projects::only_exist_project(projects_uref, _id.to_string());
+    only_valid_cspr_price(_id);
     let project_sale_start_time: i64 =
         read_project_field(_id, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME);
     let project_sale_end_time: i64 =
@@ -318,6 +341,7 @@ pub(crate) fn only_sale_time(_id: &str) -> (BlockTime, BlockTime) {
     (sale_end_block_time, current_block_time)
 }
 
+/// Users can claim after specific time.
 pub(crate) fn only_after_time(time: i64) {
     let current_block_time: BlockTime = runtime::get_blocktime();
     let block_time = BlockTime::new(time.try_into().unwrap());
