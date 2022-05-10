@@ -360,17 +360,20 @@ mod tests {
     }
 
     fn make_set_multiple_tiers_req(context: TestContext) -> ExecuteRequest {
-        let tiers: Vec<(String, U256)> = vec![
+        let tiers: Vec<(String, String, U256)> = vec![
             (
                 DEFAULT_ACCOUNT_ADDR_STRING.to_string(),
+                "swappery".to_string(),
                 U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
             ),
             (
                 account2(),
+                "swappery".to_string(),
                 U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
             ),
             (
                 account3(),
+                "swappery".to_string(),
                 U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
             ),
         ];
@@ -387,8 +390,9 @@ mod tests {
     }
 
     fn make_set_tier_req(context: TestContext) -> ExecuteRequest {
-        let tier: (String, U256) = (
+        let tier: (String, String, U256) = (
             DEFAULT_ACCOUNT_ADDR_STRING.to_string(),
+            "swappery".to_string(),
             U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
         );
         ExecuteRequestBuilder::versioned_contract_call_by_hash(

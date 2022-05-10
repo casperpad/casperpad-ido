@@ -153,7 +153,8 @@ pub fn set_multiple_tiers() -> EntryPoint {
         SET_MULTIPLE_TIERS_ENTRY_NAME,
         vec![Parameter::new(
             MULTIPLE_TIERS_RUNTIME_ARG_NAME,
-            CLType::List(Box::new(CLType::Tuple2([
+            CLType::List(Box::new(CLType::Tuple3([
+                Box::new(CLType::String),
                 Box::new(CLType::String),
                 Box::new(CLType::U256),
             ]))),
@@ -169,7 +170,11 @@ pub fn set_tier() -> EntryPoint {
         SET_TIER_ENTRY_NAME,
         vec![Parameter::new(
             TIER_RUNTIME_ARG_NAME,
-            CLType::Tuple2([Box::new(CLType::String), Box::new(CLType::U256)]),
+            CLType::Tuple3([
+                Box::new(CLType::String),
+                Box::new(CLType::String),
+                Box::new(CLType::U256),
+            ]),
         )],
         CLType::Unit,
         EntryPointAccess::Public,

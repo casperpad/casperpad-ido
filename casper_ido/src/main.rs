@@ -392,17 +392,19 @@ pub extern "C" fn set_merkle_root() {
     merkle_tree::write_merkle_tree_root_to(merkle_tree_root_uref, new_merkle_root);
 }
 
+/// set multiple tiers `Vec<(account-hash-0000000...00, project_id, amount)>`
 #[no_mangle]
 pub extern "C" fn set_multiple_tiers() {
     owner::only_owner();
-    let tiers: Vec<(String, U256)> = runtime::get_named_arg(MULTIPLE_TIERS_RUNTIME_ARG_NAME);
+    let tiers: Vec<(String, String, U256)> =
+        runtime::get_named_arg(MULTIPLE_TIERS_RUNTIME_ARG_NAME);
     tiers::write_multiple_tiers(tiers);
 }
 
 #[no_mangle]
 pub extern "C" fn set_tier() {
     owner::only_owner();
-    let tier: (String, U256) = runtime::get_named_arg(TIER_RUNTIME_ARG_NAME);
+    let tier: (String, String, U256) = runtime::get_named_arg(TIER_RUNTIME_ARG_NAME);
     tiers::write_tier(tier);
 }
 
