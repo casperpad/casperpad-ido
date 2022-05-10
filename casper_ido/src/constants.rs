@@ -8,6 +8,7 @@ pub const CLAIMS_KEY_NAME: &str = "claims";
 pub const RESULT_KEY_NAME: &str = "result";
 pub const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
 pub const PURSE_KEY_NAME: &str = "purse";
+pub const TIERS_KEY_NAME: &str = "tiers";
 // RUNTIME_NAMES
 pub const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
 pub const OWNER_RUNTIME_ARG_NAME: &str = "owner";

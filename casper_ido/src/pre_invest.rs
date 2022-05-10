@@ -20,10 +20,13 @@ fn call() {
     let amount: U512 = runtime::get_named_arg(AMOUNT_RUNTIME_ARG_NAME);
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
     let proof: Vec<(String, u8)> = runtime::get_named_arg(PROOF_RUNTIME_ARG_NAME);
-    let ido_contract_hash_key: Key = runtime::get_named_arg(IDO_CONTRACT_HASH_KEY_RUNTIME_ARG_NAME);
 
-    let contract_hash_addr: HashAddr = ido_contract_hash_key.into_hash().unwrap_or_revert();
-    let ido_contract_hash: ContractHash = ContractHash::new(contract_hash_addr);
+    let ido_contract_hash: ContractHash = {
+        let ido_contract_hash_key: Key =
+            runtime::get_named_arg(IDO_CONTRACT_HASH_KEY_RUNTIME_ARG_NAME);
+        let contract_hash_addr: HashAddr = ido_contract_hash_key.into_hash().unwrap_or_revert();
+        ContractHash::new(contract_hash_addr)
+    };
 
     let sender_purse: URef = account::get_main_purse();
 

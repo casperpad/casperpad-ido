@@ -8,13 +8,10 @@ mod tests {
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, ARG_AMOUNT,
         DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, DEFAULT_RUN_GENESIS_REQUEST,
     };
-    use casper_erc20::{
-        constants::{
-            AMOUNT_RUNTIME_ARG_NAME, APPROVE_ENTRY_POINT_NAME, DECIMALS_RUNTIME_ARG_NAME,
-            NAME_RUNTIME_ARG_NAME, SPENDER_RUNTIME_ARG_NAME, SYMBOL_RUNTIME_ARG_NAME,
-            TOTAL_SUPPLY_RUNTIME_ARG_NAME,
-        },
-        Address,
+    use casper_erc20::constants::{
+        AMOUNT_RUNTIME_ARG_NAME, APPROVE_ENTRY_POINT_NAME, DECIMALS_RUNTIME_ARG_NAME,
+        NAME_RUNTIME_ARG_NAME, SPENDER_RUNTIME_ARG_NAME, SYMBOL_RUNTIME_ARG_NAME,
+        TOTAL_SUPPLY_RUNTIME_ARG_NAME,
     };
 
     use casper_execution_engine::core::engine_state::ExecuteRequest;
@@ -37,7 +34,6 @@ mod tests {
     const ERC20_TEST_CALL_CONTRACT_WASM: &str = "erc20_test_call.wasm";
     const OWNER_RUNTIME_ARG_NAME: &str = "owner";
     const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
-    const DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "default_treasury_wallet";
     const CREATE_PROJECT_ENTRY_NAME: &str = "add_project";
     const PROJECT_ID_RUNTIME_ARG_NAME: &str = "id";
     const PROJECT_NAME_RUNTIME_ARG_NAME: &str = "name";
@@ -48,7 +44,7 @@ mod tests {
     const PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME: &str = "token_price";
 
     const TREASURY_WALLET_RUNTIME_ARG_NAME: &str = "treasury_wallet";
-    const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
+
     const PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME: &str = "token_address";
 
     const SET_PROJECT_STATUS_ENTRY_NAME: &str = "set_project_status";
@@ -70,7 +66,8 @@ mod tests {
     const SCHEDULE_ID_RUNTIME_ARG_NAME: &str = "schedule_id";
     const IDO_CONTRACT_HASH_KEY_RUNTIME_ARG_NAME: &str = "ido_contract_hash";
     const SET_PURSE_ENTRY_NAME: &str = "set_purse";
-
+    const DEFAULT_ACCOUNT_ADDR_STRING: &str =
+        "account-hash-58b891759929bd4ed5a9cce20b9d6e3c96a66c21386bed96040e17dd07b79fa7";
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
@@ -137,9 +134,7 @@ mod tests {
         let install_ido_contract = ExecuteRequestBuilder::standard(
             *DEFAULT_ACCOUNT_ADDR,
             IDO_CONTRACT_WASM,
-            runtime_args! {
-                DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME => Key::from(*DEFAULT_ACCOUNT_ADDR),
-            },
+            runtime_args! {},
         )
         .build();
 
@@ -207,11 +202,11 @@ mod tests {
         (builder, test_context)
     }
 
-    fn account2() -> AccountHash {
-        AccountHash::new([42; 32])
+    fn account2() -> String {
+        AccountHash::new([42; 32]).to_formatted_string()
     }
-    fn account3() -> AccountHash {
-        AccountHash::new([43; 32])
+    fn account3() -> String {
+        AccountHash::new([43; 32]).to_formatted_string()
     }
 
     fn make_set_merkle_root_request(context: TestContext, root: String) -> ExecuteRequest {
@@ -285,6 +280,8 @@ mod tests {
         ];
         let erc20_contracthash = context.erc20_token_contract;
 
+        println!("{:?}", *DEFAULT_ACCOUNT_ADDR);
+
         ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,
@@ -300,7 +297,7 @@ mod tests {
                 PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME => Key::from(erc20_contracthash),
                 PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => U256::from(1u32).checked_mul(U256::exp10(18 - 2)).unwrap(),
                 PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME => U256::from(2000u32).checked_mul(U256::exp10(18)).unwrap(),
-                TREASURY_WALLET_RUNTIME_ARG_NAME => *DEFAULT_ACCOUNT_ADDR,
+                TREASURY_WALLET_RUNTIME_ARG_NAME => DEFAULT_ACCOUNT_ADDR_STRING,
                 PROJECT_SCHEDULES_RUNTIME_ARG_NAME => schedules,
             },
         )
@@ -399,8 +396,11 @@ mod tests {
             .exec(transfer_ownership_req)
             .expect_success()
             .commit();
-        let result_of_query: Address = builder.get_value(context.ido_contract, OWNER_KEY_NAME);
-        assert_eq!(result_of_query, Address::from(account2())); // *DEFAULT_ACCOUNT_ADDR
+        let result_of_query: AccountHash = builder.get_value(context.ido_contract, OWNER_KEY_NAME);
+        assert_eq!(
+            result_of_query,
+            AccountHash::from_formatted_str(&account2()).unwrap()
+        ); // *DEFAULT_ACCOUNT_ADDR
         let transfer_ownership_req2 = ExecuteRequestBuilder::versioned_contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             context.ido_contract_package,
@@ -414,27 +414,6 @@ mod tests {
         builder
             .exec(transfer_ownership_req2)
             .expect_failure()
-            .commit();
-    }
-
-    #[test]
-    fn should_set_default_treasury_wallet() {
-        let (mut builder, context) = setup();
-
-        let set_default_treasury_wallet_req =
-            ExecuteRequestBuilder::versioned_contract_call_by_hash(
-                *DEFAULT_ACCOUNT_ADDR,
-                context.ido_contract_package,
-                None,
-                SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME,
-                runtime_args! {
-                    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME => account2()
-                },
-            )
-            .build();
-        builder
-            .exec(set_default_treasury_wallet_req)
-            .expect_success()
             .commit();
     }
 

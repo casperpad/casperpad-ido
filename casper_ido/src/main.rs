@@ -31,7 +31,6 @@ use casper_types::{
 };
 mod claims;
 mod constants;
-mod default_treasury_wallet;
 mod detail;
 mod entry_points;
 mod error;
@@ -41,11 +40,11 @@ mod owner;
 mod project;
 mod projects;
 mod purse;
+mod tiers;
 
 use constants::{
     CLAIMS_KEY_NAME, CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME,
-    CSPR_PRICE_RUNTIME_ARG_NAME, DEFAULT_TREASURY_WALLET_KEY_NAME,
-    DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, MERKLE_ROOT_KEY_NAME,
+    CSPR_PRICE_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, MERKLE_ROOT_KEY_NAME,
     MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME,
     PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
     PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
@@ -64,22 +63,13 @@ use project::{Project, Status};
 #[no_mangle]
 pub extern "C" fn transfer_ownership() {
     owner::only_owner();
-    let new_owner_hash: AccountHash = runtime::get_named_arg(OWNER_RUNTIME_ARG_NAME);
+    let new_owner_hash: AccountHash = {
+        let new_owner_string: String = runtime::get_named_arg(OWNER_RUNTIME_ARG_NAME);
+        AccountHash::from_formatted_str(new_owner_string.as_str()).unwrap()
+    };
     let owner_uref: URef = owner::owner_uref();
-    owner::write_owner_to(owner_uref, Address::from(new_owner_hash));
+    owner::write_owner_to(owner_uref, new_owner_hash);
     runtime::ret(CLValue::from_t(true).unwrap_or_revert());
-}
-
-#[no_mangle]
-pub extern "C" fn set_default_treasury_wallet() {
-    owner::only_owner();
-    let new_default_treasury_wallet: AccountHash =
-        runtime::get_named_arg(DEFAULT_TREASURY_WALLET_RUNTIME_ARG_NAME);
-    let default_treasury_wallet_uref = default_treasury_wallet::default_treasury_wallet_uref();
-    default_treasury_wallet::write_default_tresury_wallet_to(
-        default_treasury_wallet_uref,
-        new_default_treasury_wallet,
-    )
 }
 
 #[no_mangle]
@@ -96,7 +86,10 @@ pub extern "C" fn add_project() {
     let project_private: bool = runtime::get_named_arg(PROJECT_PRIVATE_RUNTIME_ARG_NAME);
     let project_token_price: U256 =
         runtime::get_named_arg(PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME);
-    let treasury_wallet: AccountHash = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
+    let treasury_wallet: AccountHash = {
+        let treasury_wallet_key: String = runtime::get_named_arg(TREASURY_WALLET_RUNTIME_ARG_NAME);
+        AccountHash::from_formatted_str(treasury_wallet_key.as_str()).unwrap()
+    };
 
     let project_token_address: ContractHash = {
         let project_token_address_key: Key =
@@ -401,16 +394,9 @@ pub extern "C" fn call() {
 
     // Set Contract owner
     let owner_key: Key = {
-        let owner: Address = detail::get_caller_address().unwrap_or_revert();
+        let owner: AccountHash = runtime::get_caller();
         let owner_uref: URef = storage::new_uref(owner).into_read_write();
         Key::from(owner_uref)
-    };
-    // Set default treasury wallet
-    let default_treasury_wallet_key: Key = {
-        let default_treasury_wallet = detail::get_caller_address().unwrap_or_revert();
-        let default_treasury_wallet_uref: URef =
-            storage::new_uref(default_treasury_wallet).into_read_write();
-        Key::from(default_treasury_wallet_uref)
     };
 
     // Initialize project dictionary
@@ -444,10 +430,6 @@ pub extern "C" fn call() {
     };
 
     named_keys.insert(OWNER_KEY_NAME.to_string(), owner_key);
-    named_keys.insert(
-        DEFAULT_TREASURY_WALLET_KEY_NAME.to_string(),
-        default_treasury_wallet_key,
-    );
     named_keys.insert(PROJECTS_KEY_NAME.to_string(), projects_dictionary_key);
     named_keys.insert(MERKLE_ROOT_KEY_NAME.to_string(), merkle_root_key);
     named_keys.insert(PURSE_KEY_NAME.to_string(), purse_key);

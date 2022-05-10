@@ -5,7 +5,7 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_erc20::Address;
-use casper_types::URef;
+use casper_types::{account::AccountHash, URef};
 
 use crate::{constants::OWNER_KEY_NAME, detail, error::Error};
 
@@ -15,12 +15,12 @@ pub(crate) fn owner_uref() -> URef {
 }
 
 /// Reads a owner from a specified [`URef`].
-pub(crate) fn read_owner_from(uref: URef) -> Address {
+pub(crate) fn read_owner_from(uref: URef) -> AccountHash {
     storage::read(uref).unwrap_or_revert().unwrap_or_revert()
 }
 
 /// Writes a owner to a specific [`URef`].
-pub(crate) fn write_owner_to(uref: URef, value: Address) {
+pub(crate) fn write_owner_to(uref: URef, value: AccountHash) {
     storage::write(uref, value);
 }
 
@@ -28,7 +28,7 @@ pub(crate) fn write_owner_to(uref: URef, value: Address) {
 pub(crate) fn only_owner() {
     let caller: Address = detail::get_immediate_caller_address().unwrap_or_revert();
     let owner_uref: URef = owner_uref();
-    let current_owner: Address = read_owner_from(owner_uref);
+    let current_owner: Address = Address::from(read_owner_from(owner_uref));
     if caller != current_owner {
         runtime::revert(Error::PermissionDenied)
     }
