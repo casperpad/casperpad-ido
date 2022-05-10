@@ -25,6 +25,8 @@ pub enum Error {
     NotWhiteListed = 46,
     InvalidCSPRPrice = 47,
     AlreadyClaimed = 48,
+    OutOfTier = 49,
+    OutOfCapacity = 50,
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,

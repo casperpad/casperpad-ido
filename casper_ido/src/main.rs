@@ -119,7 +119,7 @@ pub extern "C" fn add_project() {
         runtime_args! {},
     );
 
-    let locked_token_amount: U256 = {
+    let token_capacity: U256 = {
         let amount_to_lock: U256 = runtime::get_named_arg(PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME);
         let allownce_token_amount: U256 = runtime::call_contract(
             project_token_address,
@@ -166,7 +166,7 @@ pub extern "C" fn add_project() {
         project_token_decimals,
         project_token_symbol,
         project_token_total_supply,
-        locked_token_amount,
+        token_capacity,
         unlocked_token_amount,
         status,
         users_length,
@@ -244,9 +244,15 @@ pub extern "C" fn add_invest() {
         );
     }
     let new_invest_amount: U256 = invest_amount.checked_add(amount).unwrap_or_revert();
-    invests::write_invest_to(project_id.clone(), account, new_invest_amount);
 
-    // Update total_invests_amount
+    // Check user tier
+    let tiers_uref = tiers::get_tiers_uref();
+    let tier_amount: U256 = tiers::read_tier_from(tiers_uref, account, project_id.clone());
+    if new_invest_amount.gt(&tier_amount) {
+        runtime::revert(Error::OutOfTier);
+    }
+
+    // Check capacity
     let current_invests_amount: U256 = project::read_project_field(
         project_id.as_str(),
         PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
@@ -254,6 +260,44 @@ pub extern "C" fn add_invest() {
     let total_invests_amount = current_invests_amount
         .checked_add(amount)
         .unwrap_or_revert();
+    // TODO
+    let cspr_price_in_usd: U256 =
+        project::read_project_field(project_id.as_str(), CSPR_PRICE_RUNTIME_ARG_NAME);
+
+    let token_price_in_usd: U256 = project::read_project_field(
+        project_id.as_str(),
+        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+    );
+
+    let token_price_in_cspr: U256 = token_price_in_usd
+        .checked_mul(U256::exp10(9))
+        .unwrap()
+        .checked_div(cspr_price_in_usd)
+        .unwrap();
+
+    let total_invests_amount_in_token = {
+        let token_decimals: u8 = project::read_project_field(
+            project_id.as_str(),
+            PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
+        );
+        total_invests_amount
+            .checked_div(token_price_in_cspr)
+            .unwrap()
+            .checked_mul(U256::exp10(usize::from(token_decimals)))
+            .unwrap()
+    };
+
+    // Compare new invets amount in token is less than token capacity
+    let token_capacity: U256 =
+        project::read_project_field(project_id.as_str(), PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME);
+    if total_invests_amount_in_token.gt(&token_capacity) {
+        runtime::revert(Error::OutOfCapacity);
+    }
+
+    // Update user invest amount
+    invests::write_invest_to(project_id.clone(), account, new_invest_amount);
+
+    // Update total_invests_amount
     project::write_project_field(
         project_id.clone(),
         PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
@@ -311,20 +355,14 @@ pub extern "C" fn claim() {
         .checked_div(percent_decimal)
         .unwrap_or_default();
 
-    let cspr_price_in_usd: U256 = {
-        // this value should be with moute 0.5* 10 **18=> 1cspr = 0.5 usd
-        let project_uref = project::project_dictionary_uref(project_id.clone());
-        project::read_project_field(project_id.as_str(), CSPR_PRICE_RUNTIME_ARG_NAME)
-    };
-
-    let token_price_in_usd: U256 = {
-        // this value should be with moute 0.01* 10 ** 18=> 1token = 0.01usd
-        let project_uref = project::project_dictionary_uref(project_id.clone());
-        project::read_project_field(
-            project_id.as_str(),
-            PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-        )
-    };
+    // this value should be with moute 0.5* 10 **18=> 1cspr = 0.5 usd
+    let cspr_price_in_usd: U256 =
+        project::read_project_field(project_id.as_str(), CSPR_PRICE_RUNTIME_ARG_NAME);
+    // this value should be with moute 0.01* 10 ** 18=> 1token = 0.01usd
+    let token_price_in_usd: U256 = project::read_project_field(
+        project_id.as_str(),
+        PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
+    );
 
     let token_price_in_cspr: U256 = token_price_in_usd
         .checked_mul(U256::exp10(9))

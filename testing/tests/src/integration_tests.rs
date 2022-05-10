@@ -541,6 +541,10 @@ mod tests {
             .exec(make_set_purse_request(context))
             .expect_success()
             .commit();
+        builder
+            .exec(make_set_multiple_tiers_req(context))
+            .expect_success()
+            .commit();
 
         builder
             .exec(make_pre_invest_request(context))
@@ -598,6 +602,11 @@ mod tests {
 
         builder
             .exec(make_set_purse_request(context))
+            .expect_success()
+            .commit();
+
+        builder
+            .exec(make_set_multiple_tiers_req(context))
             .expect_success()
             .commit();
 

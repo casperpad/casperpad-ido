@@ -5,8 +5,7 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 
-use casper_types::RuntimeArgs;
-use casper_types::{runtime_args, ContractHash, HashAddr, Key, URef, U512};
+use casper_types::{runtime_args, ContractHash, HashAddr, Key, RuntimeArgs, URef, U512};
 
 const ADD_INVEST_ENTRY_NAME: &str = "add_invest";
 const GET_PURSE_ENTRY_NAME: &str = "get_purse";
