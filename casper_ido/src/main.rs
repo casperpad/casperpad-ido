@@ -45,15 +45,16 @@ mod tiers;
 use constants::{
     CLAIMS_KEY_NAME, CONTRACT_NAME_KEY_NAME, CSPR_AMOUNT_RUNTIME_ARG_NAME,
     CSPR_PRICE_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, MERKLE_ROOT_KEY_NAME,
-    MERKLE_ROOT_RUNTIME_ARG_NAME, OWNER_KEY_NAME, OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME,
-    PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
-    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
-    PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
-    PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
-    PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME,
-    SCHEDULE_ID_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+    MERKLE_ROOT_RUNTIME_ARG_NAME, MULTIPLE_TIERS_RUNTIME_ARG_NAME, OWNER_KEY_NAME,
+    OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
+    PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
+    PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
+    PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
+    PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
+    PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME,
+    SCHEDULE_ID_RUNTIME_ARG_NAME, TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
 };
 
 use detail::store_result;
@@ -228,10 +229,19 @@ pub extern "C" fn add_invest() {
     merkle_tree::verify_whitelist(proof);
     project::only_sale_time(project_id.as_str());
 
-    // Read user invest amount
-
+    // Update user invest amount
     let invest_amount: U256 = invests::read_invest_from(project_id.clone(), account);
-
+    if invest_amount.eq(&U256::zero()) {
+        // This is first invest, so increase participated user count
+        let users_length: U256 =
+            project::read_project_field(project_id.as_str(), PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME);
+        let new_users_length = users_length.checked_add(U256::one()).unwrap_or_revert();
+        project::write_project_field(
+            project_id.clone(),
+            PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
+            new_users_length,
+        );
+    }
     let new_invest_amount: U256 = invest_amount.checked_add(amount).unwrap_or_revert();
     invests::write_invest_to(project_id.clone(), account, new_invest_amount);
 
@@ -373,6 +383,18 @@ pub extern "C" fn set_merkle_root() {
     let new_merkle_root: String = runtime::get_named_arg(MERKLE_ROOT_RUNTIME_ARG_NAME);
     let merkle_tree_root_uref = merkle_tree::merkle_tree_root_uref();
     merkle_tree::write_merkle_tree_root_to(merkle_tree_root_uref, new_merkle_root);
+}
+
+#[no_mangle]
+pub extern "C" fn set_multiple_tiers() {
+    owner::only_owner();
+    let tiers: Vec<(String, U256)> = runtime::get_named_arg(MULTIPLE_TIERS_RUNTIME_ARG_NAME);
+}
+
+#[no_mangle]
+pub extern "C" fn set_tier() {
+    owner::only_owner();
+    let tiers: (String, U256) = runtime::get_named_arg(TIER_RUNTIME_ARG_NAME);
 }
 
 #[no_mangle]

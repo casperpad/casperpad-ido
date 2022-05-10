@@ -37,6 +37,8 @@ pub const MERKLE_ROOT_RUNTIME_ARG_NAME: &str = "merkle_root";
 pub const PROOF_RUNTIME_ARG_NAME: &str = "proof";
 pub const SCHEDULE_ID_RUNTIME_ARG_NAME: &str = "schedule_id";
 pub const CSPR_PRICE_RUNTIME_ARG_NAME: &str = "cspr_price";
+pub const MULTIPLE_TIERS_RUNTIME_ARG_NAME: &str = "tiers";
+pub const TIER_RUNTIME_ARG_NAME: &str = "tier";
 // ENTRY_POINT_NAMES
 pub const TRANSFER_OWNERSHIP_ENRTY_NAME: &str = "transfer_ownership";
 pub const SET_DEFAULT_TREASURY_WALLET_ENTRY_NAME: &str = "set_default_treasury_wallet";
@@ -48,3 +50,5 @@ pub const CLAIM_ENTRY_NAME: &str = "claim";
 pub const GET_PURSE_ENTRY_NAME: &str = "get_purse";
 pub const SET_CSPR_PRICE_ENTRY_NAME: &str = "set_cspr_price";
 pub const SET_PURSE_ENTRY_NAME: &str = "set_purse";
+pub const SET_MULTIPLE_TIERS_ENTRY_NAME: &str = "set_multiple_tiers";
+pub const SET_TIER_ENTRY_NAME: &str = "set_tier";
