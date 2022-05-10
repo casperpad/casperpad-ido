@@ -55,7 +55,7 @@ mod tests {
     const MERKLE_ROOT_RUNTIME_ARG_NAME: &str = "merkle_root";
     const SET_MERKLE_ROOT_ENTRY_NAME: &str = "set_merkle_root";
     const CLAIM_ENTRY_NAME: &str = "claim";
-    const PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME: &str = "locked_token_amount";
+    const PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME: &str = "token_capacity";
     const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
     const PROOF_RUNTIME_ARG_NAME: &str = "proof";
     const ERC20_TEST_CALL_KEY: &str = "erc20_test_call";
@@ -68,12 +68,18 @@ mod tests {
     const SET_PURSE_ENTRY_NAME: &str = "set_purse";
     const DEFAULT_ACCOUNT_ADDR_STRING: &str =
         "account-hash-58b891759929bd4ed5a9cce20b9d6e3c96a66c21386bed96040e17dd07b79fa7";
+    const SET_MULTIPLE_TIERS_ENTRY_NAME: &str = "set_multiple_tiers";
+    const SET_TIER_ENTRY_NAME: &str = "set_tier";
+    const MULTIPLE_TIERS_RUNTIME_ARG_NAME: &str = "tiers";
+    const TIER_RUNTIME_ARG_NAME: &str = "tier";
+
     #[derive(Copy, Clone)]
     struct TestContext {
         ido_contract_package: ContractPackageHash,
         ido_contract: ContractHash,
         erc20_token_contract: ContractHash,
     }
+
     fn get_test_result<T: FromBytes + CLTyped>(
         builder: &mut InMemoryWasmTestBuilder,
         contract_package_hash: ContractPackageHash,
@@ -205,6 +211,7 @@ mod tests {
     fn account2() -> String {
         AccountHash::new([42; 32]).to_formatted_string()
     }
+
     fn account3() -> String {
         AccountHash::new([43; 32]).to_formatted_string()
     }
@@ -247,6 +254,7 @@ mod tests {
         )
         .build()
     }
+
     fn make_set_purse_request(context: TestContext) -> ExecuteRequest {
         ExecuteRequestBuilder::contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
@@ -256,6 +264,7 @@ mod tests {
         )
         .build()
     }
+
     fn make_erc20_approve_request(
         erc20_token: &ContractHash,
         spender: Key,
@@ -296,7 +305,7 @@ mod tests {
                 PROJECT_PRIVATE_RUNTIME_ARG_NAME => false,
                 PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME => Key::from(erc20_contracthash),
                 PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME => U256::from(1u32).checked_mul(U256::exp10(18 - 2)).unwrap(),
-                PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME => U256::from(2000u32).checked_mul(U256::exp10(18)).unwrap(),
+                PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME => U256::from(2000u32).checked_mul(U256::exp10(18)).unwrap(),
                 TREASURY_WALLET_RUNTIME_ARG_NAME => DEFAULT_ACCOUNT_ADDR_STRING,
                 PROJECT_SCHEDULES_RUNTIME_ARG_NAME => schedules,
             },
@@ -345,6 +354,50 @@ mod tests {
             runtime_args! {
                 PROJECT_ID_RUNTIME_ARG_NAME => project_id,
                 SCHEDULE_ID_RUNTIME_ARG_NAME => schedule_id
+            },
+        )
+        .build()
+    }
+
+    fn make_set_multiple_tiers_req(context: TestContext) -> ExecuteRequest {
+        let tiers: Vec<(String, U256)> = vec![
+            (
+                DEFAULT_ACCOUNT_ADDR_STRING.to_string(),
+                U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
+            ),
+            (
+                account2(),
+                U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
+            ),
+            (
+                account3(),
+                U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
+            ),
+        ];
+        ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            SET_MULTIPLE_TIERS_ENTRY_NAME,
+            runtime_args! {
+                MULTIPLE_TIERS_RUNTIME_ARG_NAME => tiers,
+            },
+        )
+        .build()
+    }
+
+    fn make_set_tier_req(context: TestContext) -> ExecuteRequest {
+        let tier: (String, U256) = (
+            DEFAULT_ACCOUNT_ADDR_STRING.to_string(),
+            U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
+        );
+        ExecuteRequestBuilder::versioned_contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract_package,
+            None,
+            SET_TIER_ENTRY_NAME,
+            runtime_args! {
+                TIER_RUNTIME_ARG_NAME => tier,
             },
         )
         .build()
@@ -480,11 +533,6 @@ mod tests {
             .expect_success()
             .commit();
 
-        // builder
-        //     .exec(make_invest_request(context))
-        //     .expect_success()
-        //     .commit();
-
         builder
             .exec(make_set_purse_request(context))
             .expect_success()
@@ -524,7 +572,6 @@ mod tests {
         );
         builder.exec(erc20_approve_req).expect_success().commit();
 
-        // First create project
         builder
             .exec(make_add_project_req(context))
             .expect_success()
@@ -568,13 +615,6 @@ mod tests {
             .expect_success()
             .commit();
 
-        let result: U256 = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
-
-        assert_eq!(
-            result,
-            U256::from(25u32).checked_mul(U256::exp10(18)).unwrap()
-        );
-
         let balance = erc20_check_balance_of(
             &mut builder,
             &context.erc20_token_contract,
@@ -585,6 +625,24 @@ mod tests {
             balance,
             U256::from(3050u32).checked_mul(U256::exp10(18)).unwrap()
         );
+    }
+
+    #[test]
+    fn should_set_multiple_tiers() {
+        let (mut builder, context) = setup();
+        builder
+            .exec(make_set_multiple_tiers_req(context))
+            .expect_success()
+            .commit();
+    }
+
+    #[test]
+    fn should_set_tier() {
+        let (mut builder, context) = setup();
+        builder
+            .exec(make_set_tier_req(context))
+            .expect_success()
+            .commit();
     }
 
     #[test]

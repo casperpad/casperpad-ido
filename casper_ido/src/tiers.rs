@@ -34,6 +34,20 @@ pub(crate) fn read_tier_from(tiers_uref: URef, user: AccountHash) -> U256 {
         .unwrap_or_default()
 }
 
-pub(crate) fn write_multiple_users_tiers(tiers: Vec<(AccountHash, U256)>) {}
+pub(crate) fn write_multiple_tiers(tiers: Vec<(String, U256)>) {
+    let converted_tiers: Vec<(AccountHash, U256)> = tiers
+        .iter()
+        .map(|tier| (AccountHash::from_formatted_str(&tier.0).unwrap(), tier.1))
+        .collect();
+    let tiers_uref = get_tiers_uref();
+    for tier in converted_tiers {
+        write_tier_to(tiers_uref, tier.0, tier.1);
+    }
+}
 
-pub(crate) fn write_user_tier(tier: (AccountHash, U256)) {}
+pub(crate) fn write_tier(tier: (String, U256)) {
+    let converted_tier = (AccountHash::from_formatted_str(&tier.0).unwrap(), tier.1);
+
+    let tiers_uref = get_tiers_uref();
+    write_tier_to(tiers_uref, converted_tier.0, converted_tier.1);
+}

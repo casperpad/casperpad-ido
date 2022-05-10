@@ -47,14 +47,15 @@ use constants::{
     CSPR_PRICE_RUNTIME_ARG_NAME, INVESTS_KEY_NAME, MERKLE_ROOT_KEY_NAME,
     MERKLE_ROOT_RUNTIME_ARG_NAME, MULTIPLE_TIERS_RUNTIME_ARG_NAME, OWNER_KEY_NAME,
     OWNER_RUNTIME_ARG_NAME, PROJECTS_KEY_NAME, PROJECT_ID_RUNTIME_ARG_NAME,
-    PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
-    PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
-    PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
-    PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
-    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
-    PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME, PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME,
-    SCHEDULE_ID_RUNTIME_ARG_NAME, TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+    PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
+    PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
+    PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
+    PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME, PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
+    PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
+    PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
+    PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME, SCHEDULE_ID_RUNTIME_ARG_NAME, TIERS_KEY_NAME,
+    TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
 };
 
 use detail::store_result;
@@ -75,8 +76,7 @@ pub extern "C" fn transfer_ownership() {
 
 #[no_mangle]
 pub extern "C" fn add_project() {
-    // TODO only verified project creators!!!!
-    // owner::only_owner();
+    owner::only_owner();
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
     projects::only_not_exist_project(project_id.clone());
     let project_name: String = runtime::get_named_arg(PROJECT_NAME_RUNTIME_ARG_NAME);
@@ -120,8 +120,7 @@ pub extern "C" fn add_project() {
     );
 
     let locked_token_amount: U256 = {
-        let amount_to_lock: U256 =
-            runtime::get_named_arg(PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME);
+        let amount_to_lock: U256 = runtime::get_named_arg(PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME);
         let allownce_token_amount: U256 = runtime::call_contract(
             project_token_address,
             ALLOWANCE_ENTRY_POINT_NAME,
@@ -131,7 +130,7 @@ pub extern "C" fn add_project() {
             },
         );
         if amount_to_lock > allownce_token_amount {
-            runtime::revert(Error::InsufficientAllowance)
+            runtime::revert(Error::InsufficientAllowance);
         }
         runtime::call_contract::<()>(
             project_token_address,
@@ -153,7 +152,7 @@ pub extern "C" fn add_project() {
 
     let unlocked_token_amount: U256 = U256::from(0u32);
     let users_length = U256::from(0u32);
-    let capacity_usd = U256::from(0u32);
+    let total_invests_amount = U256::from(0u32);
     let project = Project::new(
         &project_id,
         &project_name,
@@ -167,13 +166,13 @@ pub extern "C" fn add_project() {
         project_token_decimals,
         project_token_symbol,
         project_token_total_supply,
-        capacity_usd,
         locked_token_amount,
         unlocked_token_amount,
         status,
         users_length,
         schedules,
         cspr_price,
+        total_invests_amount,
     );
 
     project::write_project(project);
@@ -206,6 +205,7 @@ pub extern "C" fn set_cspr_price() {
     project::write_project_field(project_id, CSPR_PRICE_RUNTIME_ARG_NAME, cspr_price);
 }
 
+/// Add invest to project befor invest admin must set cspr price by calling set_cspr_price.
 #[no_mangle]
 pub extern "C" fn add_invest() {
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);
@@ -219,6 +219,7 @@ pub extern "C" fn add_invest() {
         runtime::revert(Error::InsufficientBalance);
     }
 
+    // Since amount is used to calculate erc20 amount we need to convert data type
     let amount = U256::from(amount_u512.as_u128());
 
     let account: AccountHash = *detail::get_immediate_caller_address()
@@ -244,6 +245,20 @@ pub extern "C" fn add_invest() {
     }
     let new_invest_amount: U256 = invest_amount.checked_add(amount).unwrap_or_revert();
     invests::write_invest_to(project_id.clone(), account, new_invest_amount);
+
+    // Update total_invests_amount
+    let current_invests_amount: U256 = project::read_project_field(
+        project_id.as_str(),
+        PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
+    );
+    let total_invests_amount = current_invests_amount
+        .checked_add(amount)
+        .unwrap_or_revert();
+    project::write_project_field(
+        project_id.clone(),
+        PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
+        total_invests_amount,
+    );
 
     // Transfer CSPR
     let treasury_wallet: AccountHash =
@@ -287,12 +302,6 @@ pub extern "C" fn claim() {
     let project_token_address: ContractHash =
         project::read_project_field(project_id.as_str(), PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME);
 
-    let token_decimal: u8 = runtime::call_contract(
-        project_token_address,
-        DECIMALS_ENTRY_POINT_NAME,
-        runtime_args! {},
-    );
-
     // Get user vest amount
     let invest_amount = invests::read_invest_from(project_id.clone(), account); // cspr amount
     let percent_decimal = U256::exp10(5); // Percent decimal is 5
@@ -335,18 +344,17 @@ pub extern "C" fn claim() {
             .unwrap()
     };
 
-    store_result(transfer_amount);
-
-    let locked_token_amount: U256 = runtime::call_contract(
+    let token_balance_of_contract: U256 = runtime::call_contract(
         project_token_address,
         BALANCE_OF_ENTRY_POINT_NAME,
         runtime_args! {
             ADDRESS_RUNTIME_ARG_NAME => detail::get_caller_address().unwrap_or_revert()
         },
     );
-    if transfer_amount > locked_token_amount {
+    if transfer_amount > token_balance_of_contract {
         runtime::revert(Error::InsufficientBalance);
     }
+
     runtime::call_contract::<()>(
         project_token_address,
         TRANSFER_ENTRY_POINT_NAME,
@@ -361,7 +369,6 @@ pub extern "C" fn claim() {
         project_id.as_str(),
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
     );
-
     project::write_project_field(
         project_id.clone(),
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
@@ -389,12 +396,14 @@ pub extern "C" fn set_merkle_root() {
 pub extern "C" fn set_multiple_tiers() {
     owner::only_owner();
     let tiers: Vec<(String, U256)> = runtime::get_named_arg(MULTIPLE_TIERS_RUNTIME_ARG_NAME);
+    tiers::write_multiple_tiers(tiers);
 }
 
 #[no_mangle]
 pub extern "C" fn set_tier() {
     owner::only_owner();
-    let tiers: (String, U256) = runtime::get_named_arg(TIER_RUNTIME_ARG_NAME);
+    let tier: (String, U256) = runtime::get_named_arg(TIER_RUNTIME_ARG_NAME);
+    tiers::write_tier(tier);
 }
 
 #[no_mangle]
@@ -437,6 +446,12 @@ pub extern "C" fn call() {
         runtime::remove_key(CLAIMS_KEY_NAME);
         Key::from(uref)
     };
+
+    let tiers_dictionary_key: Key = {
+        let uref: URef = storage::new_dictionary(TIERS_KEY_NAME).unwrap_or_revert();
+        runtime::remove_key(TIERS_KEY_NAME);
+        Key::from(uref)
+    };
     // Merkle
     let merkle_root_key: Key = {
         let root: [u8; 32] = [0u8; 32];
@@ -457,6 +472,7 @@ pub extern "C" fn call() {
     named_keys.insert(PURSE_KEY_NAME.to_string(), purse_key);
     named_keys.insert(INVESTS_KEY_NAME.to_string(), invests_dictionary_key);
     named_keys.insert(CLAIMS_KEY_NAME.to_string(), claims_dictionary_key);
+    named_keys.insert(TIERS_KEY_NAME.to_string(), tiers_dictionary_key);
 
     let entry_points = entry_points::default();
 

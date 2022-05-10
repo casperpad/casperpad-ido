@@ -18,14 +18,14 @@ use casper_types::{
 
 use crate::{
     constants::{
-        CSPR_PRICE_RUNTIME_ARG_NAME, PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME,
-        PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
-        PROJECT_NAME_RUNTIME_ARG_NAME, PROJECT_OPEN_TIME_RUNTIME_ARG_NAME,
-        PROJECT_PRIVATE_RUNTIME_ARG_NAME, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME,
-        PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME, PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
-        PROJECT_STATUS_RUNTIME_ARG_NAME, PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME,
+        CSPR_PRICE_RUNTIME_ARG_NAME, PROJECT_ID_RUNTIME_ARG_NAME, PROJECT_NAME_RUNTIME_ARG_NAME,
+        PROJECT_OPEN_TIME_RUNTIME_ARG_NAME, PROJECT_PRIVATE_RUNTIME_ARG_NAME,
+        PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME, PROJECT_SALE_START_TIME_RUNTIME_ARG_NAME,
+        PROJECT_SCHEDULES_RUNTIME_ARG_NAME, PROJECT_STATUS_RUNTIME_ARG_NAME,
+        PROJECT_TOKEN_ADDRESS_RUNTIME_ARG_NAME, PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME,
         PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME, PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME,
         PROJECT_TOKEN_SYMBOL_RUNTIME_ARG_NAME, PROJECT_TOKEN_TOTAL_SUPPLY_RUNTIME_ARG_NAME,
+        PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
         TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
@@ -105,14 +105,14 @@ pub struct Project {
     pub token_decimals: u8,
     pub token_symbol: String,
     pub total_supply: U256,
-    pub capacity_usd: U256,
-    pub locked_token_amount: U256,
+    pub token_capacity: U256,
     pub unlocked_token_amount: U256,
     pub treasury_wallet: AccountHash,
     pub status: Status,
     pub users_length: U256,
     pub schedules: Vec<(i64, U256)>,
     pub cspr_price: U256,
+    pub total_invests_amount: U256,
 }
 
 impl Project {
@@ -129,13 +129,13 @@ impl Project {
         token_decimals: u8,
         token_symbol: String,
         total_supply: U256,
-        capacity_usd: U256,
-        locked_token_amount: U256,
+        token_capacity: U256,
         unlocked_token_amount: U256,
         status: Status,
         users_length: U256,
         schedules: Vec<(i64, U256)>,
         cspr_price: U256,
+        total_invests_amount: U256,
     ) -> Self {
         Self {
             id: String::from(id),
@@ -151,12 +151,12 @@ impl Project {
             token_decimals,
             token_symbol,
             total_supply,
-            capacity_usd,
             users_length,
             schedules,
-            locked_token_amount,
+            token_capacity,
             unlocked_token_amount,
             cspr_price,
+            total_invests_amount,
         }
     }
 }
@@ -276,11 +276,6 @@ pub(crate) fn write_project(project: Project) {
 
     write_project_field(
         project.id.clone(),
-        PROJECT_CAPACITY_USD_RUNTIME_ARG_NAME,
-        project.capacity_usd,
-    );
-    write_project_field(
-        project.id.clone(),
         PROJECT_SCHEDULES_RUNTIME_ARG_NAME,
         project.schedules,
     );
@@ -292,13 +287,18 @@ pub(crate) fn write_project(project: Project) {
     );
     write_project_field(
         project.id.clone(),
-        PROJECT_LOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME,
-        project.locked_token_amount,
+        PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME,
+        project.token_capacity,
     );
     write_project_field(
         project.id.clone(),
         CSPR_PRICE_RUNTIME_ARG_NAME,
         project.cspr_price,
+    );
+    write_project_field(
+        project.id.clone(),
+        PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
+        project.total_invests_amount,
     );
 }
 
