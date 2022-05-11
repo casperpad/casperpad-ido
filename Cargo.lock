@@ -237,7 +237,6 @@ dependencies = [
 name = "casper_ido"
 version = "0.1.0"
 dependencies = [
- "base64",
  "casper-contract",
  "casper-erc20",
  "casper-types",

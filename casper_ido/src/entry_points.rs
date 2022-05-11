@@ -141,7 +141,10 @@ pub fn set_purse() -> EntryPoint {
 pub fn set_cspr_price() -> EntryPoint {
     EntryPoint::new(
         SET_CSPR_PRICE_ENTRY_NAME,
-        vec![Parameter::new(CSPR_PRICE_RUNTIME_ARG_NAME, CLType::U256)],
+        vec![
+            Parameter::new(PROJECT_ID_RUNTIME_ARG_NAME, CLType::String),
+            Parameter::new(CSPR_PRICE_RUNTIME_ARG_NAME, CLType::U256),
+        ],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
