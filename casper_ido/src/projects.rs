@@ -13,7 +13,7 @@ use crate::{constants::PROJECTS_KEY_NAME, detail, error::Error};
 #[inline]
 fn make_dictionary_item_key(project_id: String) -> String {
     let preimage = project_id.to_bytes().unwrap_or_revert();
-    hex::encode(&preimage)
+    base64::encode(&preimage)
 }
 
 pub(crate) fn get_projects_uref() -> URef {

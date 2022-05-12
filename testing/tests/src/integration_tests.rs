@@ -391,7 +391,8 @@ mod tests {
 
     fn make_set_tier_req(context: TestContext) -> ExecuteRequest {
         let tier: (String, String, U256) = (
-            DEFAULT_ACCOUNT_ADDR_STRING.to_string(),
+            "account-hash-56befc13a6fd62e18f361700a5e08f966901c34df8041b36ec97d54d605c23de"
+                .to_string(),
             "swappery".to_string(),
             U256::from(100).checked_mul(U256::exp10(18)).unwrap(),
         );
@@ -550,6 +551,8 @@ mod tests {
             .exec(make_pre_invest_request(context))
             .expect_success()
             .commit();
+        let result: u64 = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
+        assert_eq!(result, 0u64);
     }
 
     #[test]
@@ -656,6 +659,8 @@ mod tests {
             .exec(make_set_tier_req(context))
             .expect_success()
             .commit();
+        let dictionary_key: String = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
+        assert_eq!(dictionary_key, "");
     }
 
     #[test]

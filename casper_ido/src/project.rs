@@ -29,6 +29,7 @@ use crate::{
         PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
         TREASURY_WALLET_RUNTIME_ARG_NAME,
     },
+    detail,
     error::Error,
     projects,
 };
@@ -173,8 +174,7 @@ pub(crate) fn make_dictionary_item_key(field: String) -> String {
 
     preimage.append(&mut field.to_bytes().unwrap_or_revert());
 
-    let key_bytes = runtime::blake2b(&preimage);
-    hex::encode(&key_bytes)
+    base64::encode(&preimage)
 }
 
 /// Writes project field.
@@ -323,7 +323,7 @@ pub(crate) fn only_approved_project(_id: &str) {
 }
 
 /// Users can vest during the vest time.
-pub(crate) fn only_sale_time(_id: &str) -> (BlockTime, BlockTime) {
+pub(crate) fn only_sale_time(_id: &str) -> BlockTime {
     let projects_uref = projects::get_projects_uref();
     projects::only_exist_project(projects_uref, _id.to_string());
     only_valid_cspr_price(_id);
@@ -332,13 +332,20 @@ pub(crate) fn only_sale_time(_id: &str) -> (BlockTime, BlockTime) {
     let project_sale_end_time: i64 =
         read_project_field(_id, PROJECT_SALE_END_TIME_RUNTIME_ARG_NAME);
     // Current time is after 1970
+    let sale_start_block_time = BlockTime::new(project_sale_start_time.try_into().unwrap());
     let sale_end_block_time = BlockTime::new(project_sale_end_time.try_into().unwrap());
 
     let current_block_time: BlockTime = runtime::get_blocktime();
+
+    detail::store_result(u64::from(current_block_time));
+
+    if current_block_time.lt(&sale_start_block_time) {
+        runtime::revert(Error::SaleNotStarted);
+    }
     if current_block_time.gt(&sale_end_block_time) {
         runtime::revert(Error::SaleEnded);
     }
-    (sale_end_block_time, current_block_time)
+    current_block_time
 }
 
 /// Users can claim after specific time.

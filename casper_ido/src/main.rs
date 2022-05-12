@@ -26,8 +26,8 @@ use casper_erc20::{
     Address,
 };
 use casper_types::{
-    account::AccountHash, contracts::NamedKeys, runtime_args, CLValue, ContractHash, Key,
-    RuntimeArgs, URef, U256, U512,
+    account::AccountHash, contracts::NamedKeys, runtime_args, BlockTime, CLValue, ContractHash,
+    Key, RuntimeArgs, URef, U256, U512,
 };
 mod claims;
 mod constants;
@@ -58,7 +58,7 @@ use constants::{
     TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
 };
 
-use detail::store_result;
+// use detail::store_result;
 use error::Error;
 use project::{Project, Status};
 
@@ -427,10 +427,14 @@ pub extern "C" fn set_merkle_root() {
     owner::only_owner();
     let new_merkle_root: String = runtime::get_named_arg(MERKLE_ROOT_RUNTIME_ARG_NAME);
     let merkle_tree_root_uref = merkle_tree::merkle_tree_root_uref();
+
+    let current_block_time: BlockTime = runtime::get_blocktime();
+
+    detail::store_result(u64::from(current_block_time));
     merkle_tree::write_merkle_tree_root_to(merkle_tree_root_uref, new_merkle_root);
 }
 
-/// set multiple tiers `Vec<(account-hash-0000000...00, project_id, amount)>`
+/// set multiple tiers `Vec<(account-hash-0000000...00, project_id, amount)>` amount is in CSPR
 #[no_mangle]
 pub extern "C" fn set_multiple_tiers() {
     owner::only_owner();
