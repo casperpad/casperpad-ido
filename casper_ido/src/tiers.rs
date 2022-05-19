@@ -29,7 +29,6 @@ pub(crate) fn get_tiers_uref() -> URef {
 /// Writes tier
 pub(crate) fn write_tier_to(tiers_uref: URef, user: AccountHash, project_id: String, amount: U256) {
     let dictionary_item_key = make_dictionary_item_key(user, project_id);
-    detail::store_result(dictionary_item_key.clone());
     storage::dictionary_put(tiers_uref, &dictionary_item_key, amount);
 }
 

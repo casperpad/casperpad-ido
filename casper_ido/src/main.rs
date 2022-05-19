@@ -11,7 +11,7 @@ extern crate alloc;
 
 use crate::alloc::string::{String, ToString};
 
-use alloc::vec::Vec;
+use alloc::{collections::BTreeSet, vec::Vec};
 use casper_contract::{
     contract_api::{runtime, storage, system},
     unwrap_or_revert::UnwrapOrRevert,
@@ -27,7 +27,7 @@ use casper_erc20::{
 };
 use casper_types::{
     account::AccountHash, contracts::NamedKeys, runtime_args, BlockTime, CLValue, ContractHash,
-    Key, RuntimeArgs, URef, U256, U512,
+    ContractPackageHash, Key, RuntimeArgs, URef, U256, U512,
 };
 mod claims;
 mod constants;
@@ -54,8 +54,8 @@ use constants::{
     PROJECT_TOKEN_CAPACITY_RUNTIME_ARG_NAME, PROJECT_TOKEN_DECIMALS_RUNTIME_ARG_NAME,
     PROJECT_TOKEN_PRICE_USD_RUNTIME_ARG_NAME, PROJECT_TOTAL_INVESTS_AMOUNT_RUNTIME_ARG_NAME,
     PROJECT_UNLOCKED_TOKEN_AMOUNT_RUNTIME_ARG_NAME, PROJECT_USERS_LENGTH_RUNTIME_ARG_NAME,
-    PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME, SCHEDULE_ID_RUNTIME_ARG_NAME, TIERS_KEY_NAME,
-    TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
+    PROOF_RUNTIME_ARG_NAME, PURSE_KEY_NAME, SCHEDULE_ID_RUNTIME_ARG_NAME, SET_PURSE_ENTRY_NAME,
+    TIERS_KEY_NAME, TIER_RUNTIME_ARG_NAME, TREASURY_WALLET_RUNTIME_ARG_NAME,
 };
 
 // use detail::store_result;
@@ -526,6 +526,31 @@ pub extern "C" fn call() {
         Some(String::from(CONTRACT_NAME_KEY_NAME)),
         None,
     );
+
+    let package_hash: ContractPackageHash = ContractPackageHash::new(
+        runtime::get_key(CONTRACT_NAME_KEY_NAME)
+            .unwrap_or_revert()
+            .into_hash()
+            .unwrap_or_revert(),
+    );
+
+    let constructor_access: URef = storage::create_contract_user_group(
+        package_hash,
+        SET_PURSE_ENTRY_NAME,
+        1,
+        Default::default(),
+    )
+    .unwrap_or_revert()
+    .pop()
+    .unwrap_or_revert();
+
+    let _: () = runtime::call_contract(contract_hash, SET_PURSE_ENTRY_NAME, runtime_args! {});
+
+    let mut urefs = BTreeSet::new();
+    urefs.insert(constructor_access);
+    storage::remove_contract_user_group_urefs(package_hash, SET_PURSE_ENTRY_NAME, urefs)
+        .unwrap_or_revert();
+
     let mut contract_hash_key_name: String = String::from(CONTRACT_NAME_KEY_NAME);
     contract_hash_key_name.push_str("_contract_hash");
     runtime::put_key(contract_hash_key_name.as_str(), Key::from(contract_hash));

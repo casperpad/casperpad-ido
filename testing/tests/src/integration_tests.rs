@@ -65,7 +65,6 @@ mod tests {
     const ARG_ADDRESS: &str = "address";
     const SCHEDULE_ID_RUNTIME_ARG_NAME: &str = "schedule_id";
     const IDO_CONTRACT_HASH_KEY_RUNTIME_ARG_NAME: &str = "ido_contract_hash";
-    const SET_PURSE_ENTRY_NAME: &str = "set_purse";
     const DEFAULT_ACCOUNT_ADDR_STRING: &str =
         "account-hash-58b891759929bd4ed5a9cce20b9d6e3c96a66c21386bed96040e17dd07b79fa7";
     const SET_MULTIPLE_TIERS_ENTRY_NAME: &str = "set_multiple_tiers";
@@ -251,16 +250,6 @@ mod tests {
                 AMOUNT_RUNTIME_ARG_NAME => U512::from(1).checked_mul(U512::exp10(9)).unwrap(),
                 PROOF_RUNTIME_ARG_NAME => get_proof()
             },
-        )
-        .build()
-    }
-
-    fn make_set_purse_request(context: TestContext) -> ExecuteRequest {
-        ExecuteRequestBuilder::contract_call_by_hash(
-            *DEFAULT_ACCOUNT_ADDR,
-            context.ido_contract,
-            SET_PURSE_ENTRY_NAME,
-            runtime_args! {},
         )
         .build()
     }
@@ -539,10 +528,6 @@ mod tests {
             .commit();
 
         builder
-            .exec(make_set_purse_request(context))
-            .expect_success()
-            .commit();
-        builder
             .exec(make_set_multiple_tiers_req(context))
             .expect_success()
             .commit();
@@ -604,11 +589,6 @@ mod tests {
             .commit();
 
         builder
-            .exec(make_set_purse_request(context))
-            .expect_success()
-            .commit();
-
-        builder
             .exec(make_set_multiple_tiers_req(context))
             .expect_success()
             .commit();
@@ -659,8 +639,6 @@ mod tests {
             .exec(make_set_tier_req(context))
             .expect_success()
             .commit();
-        let dictionary_key: String = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
-        assert_eq!(dictionary_key, "");
     }
 
     #[test]

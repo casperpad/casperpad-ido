@@ -33,7 +33,7 @@ use crate::{
     error::Error,
     projects,
 };
-// #[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+
 #[derive(Debug, Clone, Copy)]
 pub enum Status {
     Pending = 1,
@@ -309,16 +309,6 @@ pub(crate) fn only_valid_cspr_price(_id: &str) {
     let status: U256 = read_project_field(_id, CSPR_PRICE_RUNTIME_ARG_NAME);
     if status.eq(&U256::zero()) {
         runtime::revert(Error::InvalidCSPRPrice);
-    }
-}
-
-pub(crate) fn only_approved_project(_id: &str) {
-    let projects_uref = projects::get_projects_uref();
-    projects::only_exist_project(projects_uref, _id.to_string());
-    let status: Status = read_project_field(_id, PROJECT_STATUS_RUNTIME_ARG_NAME);
-    match status {
-        Status::Approved => (),
-        _ => runtime::revert(Error::PermissionDenied),
     }
 }
 

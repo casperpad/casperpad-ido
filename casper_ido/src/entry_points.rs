@@ -18,7 +18,7 @@ use crate::constants::{
 use casper_erc20::Address;
 
 use casper_types::{
-    CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter,
+    CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Parameter,
 };
 
 pub fn transfer_ownership() -> EntryPoint {
@@ -133,7 +133,7 @@ pub fn set_purse() -> EntryPoint {
         SET_PURSE_ENTRY_NAME,
         vec![],
         CLType::Unit,
-        EntryPointAccess::Public,
+        EntryPointAccess::Groups(vec![Group::new(SET_PURSE_ENTRY_NAME)]),
         EntryPointType::Contract,
     )
 }
