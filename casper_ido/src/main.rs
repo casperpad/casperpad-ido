@@ -29,12 +29,16 @@ use casper_types::{
     account::AccountHash, contracts::NamedKeys, runtime_args, BlockTime, CLValue, ContractHash,
     ContractPackageHash, Key, RuntimeArgs, URef, U256, U512,
 };
+
+mod address;
 mod claims;
 mod constants;
 mod detail;
 mod entry_points;
 mod error;
+mod interfaces;
 mod invests;
+mod lib;
 mod merkle_tree;
 mod owner;
 mod project;
@@ -141,13 +145,7 @@ pub extern "C" fn add_project() {
                 AMOUNT_RUNTIME_ARG_NAME => amount_to_lock
             },
         );
-        runtime::call_contract(
-            project_token_address,
-            BALANCE_OF_ENTRY_POINT_NAME,
-            runtime_args! {
-                ADDRESS_RUNTIME_ARG_NAME => detail::get_caller_address().unwrap_or_revert()
-            },
-        )
+        amount_to_lock
     };
 
     let unlocked_token_amount: U256 = U256::from(0u32);
@@ -205,7 +203,7 @@ pub extern "C" fn set_cspr_price() {
     project::write_project_field(project_id, CSPR_PRICE_RUNTIME_ARG_NAME, cspr_price);
 }
 
-/// Add invest to project befor invest admin must set cspr price by calling set_cspr_price.
+/// Add invest to project before invest admin must set cspr price by calling set_cspr_price.
 #[no_mangle]
 pub extern "C" fn add_invest() {
     let project_id: String = runtime::get_named_arg(PROJECT_ID_RUNTIME_ARG_NAME);

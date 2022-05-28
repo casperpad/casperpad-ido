@@ -342,7 +342,7 @@ pub(crate) fn only_sale_time(_id: &str) -> BlockTime {
 pub(crate) fn only_after_time(time: i64) {
     let current_block_time: BlockTime = runtime::get_blocktime();
     let block_time = BlockTime::new(time.try_into().unwrap());
-    if current_block_time.gt(&block_time) {
+    if current_block_time.lt(&block_time) {
         runtime::revert(Error::NotValidTime);
     }
 }

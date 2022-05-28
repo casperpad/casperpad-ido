@@ -1,4 +1,4 @@
-ALL_CONTRACTS = casper_ido erc20-test-call 
+ALL_CONTRACTS = casper_ido casper-ido erc20-test-call 
 CONTRACT_TARGET_DIR = target/wasm32-unknown-unknown/release
 
 prepare:
@@ -12,9 +12,10 @@ test: build-contracts
 	mkdir -p testing/tests/wasm
 	cp target/wasm32-unknown-unknown/release/casper_ido.wasm testing/tests/wasm
 	cp target/wasm32-unknown-unknown/release/pre_invest.wasm testing/tests/wasm
-	cp target/wasm32-unknown-unknown/release/erc20_test.wasm testing/tests/wasm
 	cp target/wasm32-unknown-unknown/release/erc20_test_call.wasm testing/tests/wasm
-	cd testing/tests && cargo test
+	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm casper-ido-tests/wasm
+	# cd testing/tests && cargo test
+	cd casper-ido-tests && cargo test
 
 clippy:
 	cargo clippy --all-targets -- -D warnings

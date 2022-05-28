@@ -254,6 +254,20 @@ mod tests {
         .build()
     }
 
+    fn _make_invest_request(context: TestContext) -> ExecuteRequest {
+        ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            context.ido_contract,
+            "add_invest",
+            runtime_args! {
+                PROJECT_ID_RUNTIME_ARG_NAME => "swappery",
+                "cspr_amount" => U256::from(500).checked_mul(U256::exp10(18 - 3)).unwrap(), // assert(USD Token decimals is 18)
+                PROOF_RUNTIME_ARG_NAME => get_proof()
+            },
+        )
+        .build()
+    }
+
     fn make_erc20_approve_request(
         erc20_token: &ContractHash,
         spender: Key,
@@ -536,6 +550,7 @@ mod tests {
             .exec(make_pre_invest_request(context))
             .expect_success()
             .commit();
+
         let result: u64 = builder.get_value(context.ido_contract, RESULT_KEY_NAME);
         assert_eq!(result, 0u64);
     }

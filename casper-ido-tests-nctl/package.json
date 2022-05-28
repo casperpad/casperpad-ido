@@ -1,0 +1,16 @@
+{
+  "name": "casper-ido-tests-nctl",
+  "version": "0.0.1",
+  "description": "The test script for nctl",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "casper-js-sdk",
+    "nctl",
+    "ido"
+  ],
+  "author": "gyroflaw",
+  "license": "ISC"
+}
