@@ -1,12 +1,13 @@
 [workspace]
 members = [
-    "casper_ido",
-    "casper-ido",
-    "casper-ido-tests",
-    "testing/tests",
-    "testing/erc20-test-call",
+    "contract",
+    "tests",
 ]
 
+default-members = [
+    "contract",
+    "tests",
+]
 
 [profile.release]
 codegen-units = 1

@@ -24,10 +24,11 @@ pub trait AdminControl<Storage: ContractStorage>: ContractContext<Storage> {
         Admins::instance().add_admin(&address);
     }
 
+    /// Revert with `ApiError::PermissionDenied` if caller is not Admin
     fn assert_caller_is_admin(&self) {
         let caller = self.get_caller();
         if !self.is_admin(caller) {
-            runtime::revert(ApiError::User(20));
+            runtime::revert(ApiError::PermissionDenied);
         }
     }
 

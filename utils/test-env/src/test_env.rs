@@ -1,4 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    convert::TryInto,
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use casper_engine_test_support::{InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST};
 use casper_types::{
@@ -20,13 +24,20 @@ impl TestEnv {
     }
 
     pub fn run(&self, sender: AccountHash, session_code: DeploySource, session_args: RuntimeArgs) {
+        let now = SystemTime::now();
+        let since_the_epoch: u64 = now
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis()
+            .try_into()
+            .unwrap();
         deploy(
             &mut self.state.lock().unwrap().builder,
             &sender,
             &session_code,
             session_args,
             true,
-            None,
+            Some(since_the_epoch),
         )
     }
 

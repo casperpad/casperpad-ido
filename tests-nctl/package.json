@@ -1,0 +1,26 @@
+{
+  "name": "casper-ido-tests-nctl",
+  "version": "0.0.1",
+  "description": "The test script for nctl",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "merkletree": "ts-node ./scripts/merkletree.ts"
+  },
+  "keywords": [
+    "casper-js-sdk",
+    "nctl",
+    "ido"
+  ],
+  "author": "gyroflaw",
+  "license": "ISC",
+  "dependencies": {
+    "casper-js-sdk": "^2.9.1",
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.2.31",
+    "ts-node": "^10.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.7.2"
+  }
+}

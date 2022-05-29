@@ -1,4 +1,4 @@
-ALL_CONTRACTS = casper_ido casper-ido erc20-test-call 
+ALL_CONTRACTS = casper-ido-contract
 CONTRACT_TARGET_DIR = target/wasm32-unknown-unknown/release
 
 prepare:
@@ -9,13 +9,11 @@ build-contracts:
 	$(foreach WASM, $(ALL_CONTRACTS), wasm-strip $(CONTRACT_TARGET_DIR)/$(subst -,_,$(WASM)).wasm 2>/dev/null | true;)
 
 test: build-contracts
-	mkdir -p testing/tests/wasm
-	cp target/wasm32-unknown-unknown/release/casper_ido.wasm testing/tests/wasm
-	cp target/wasm32-unknown-unknown/release/pre_invest.wasm testing/tests/wasm
-	cp target/wasm32-unknown-unknown/release/erc20_test_call.wasm testing/tests/wasm
-	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm casper-ido-tests/wasm
+	mkdir -p tests/wasm
+	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm tests/wasm/casper_ido_contract.wasm
 	# cd testing/tests && cargo test
-	cd casper-ido-tests && cargo test
+	# cd casper-ido-tests && cargo test
+	cargo test
 
 clippy:
 	cargo clippy --all-targets -- -D warnings
