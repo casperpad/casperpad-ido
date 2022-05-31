@@ -4,7 +4,10 @@ use casper_engine_test_support::{
     DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, ARG_AMOUNT,
     DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT,
 };
-use casper_execution_engine::core::engine_state::ExecuteRequest;
+use casper_execution_engine::core::engine_state::{
+    execute_request::ExecuteRequest,
+};
+
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, system::mint, CLTyped, ContractHash,
     Key, RuntimeArgs, StoredValue, U512,

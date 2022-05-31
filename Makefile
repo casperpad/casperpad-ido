@@ -10,10 +10,10 @@ build-contracts:
 
 test: build-contracts
 	mkdir -p tests/wasm
-	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm tests/wasm/casper_ido_contract.wasm
-	# cd testing/tests && cargo test
+	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm tests/wasm
+	cd tests && cargo test
 	# cd casper-ido-tests && cargo test
-	cargo test
+	# cargo test
 
 clippy:
 	cargo clippy --all-targets -- -D warnings

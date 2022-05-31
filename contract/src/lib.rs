@@ -10,7 +10,7 @@ pub mod enums;
 mod error;
 mod event;
 mod interfaces;
-mod libs;
+pub mod libs;
 pub mod structs;
 
 pub use casper_ido::CasperIdo;

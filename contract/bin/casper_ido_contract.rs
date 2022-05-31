@@ -9,15 +9,16 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 // `no_std` environment.
 extern crate alloc;
 
-use alloc::{collections::BTreeSet, format, string::String, vec};
+use alloc::{collections::BTreeSet, format, string::String, vec, vec::Vec};
 use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_ido_contract::{
-    enums::BiddingToken,
+    enums::{Address, BiddingToken},
+    libs::address_utils,
     structs::{Auction, Claims, Orders, Schedules, Tiers, Time},
-    CasperIdo,
+    CasperIdo, IERC20,
 };
 
 use casper_types::{
@@ -40,8 +41,8 @@ impl AdminControl<OnChainContractStorage> for CasperIdoContract {}
 impl ReentrancyGuard<OnChainContractStorage> for CasperIdoContract {}
 
 impl CasperIdoContract {
-    fn constructor(&mut self) {
-        CasperIdo::init(self);
+    fn constructor(&mut self, default_treasury_wallet: Address) {
+        CasperIdo::init(self, default_treasury_wallet);
         AdminControl::init(self);
         ReentrancyGuard::init(self);
     }
@@ -49,13 +50,10 @@ impl CasperIdoContract {
 
 #[no_mangle]
 pub extern "C" fn constructor() {
-    CasperIdoContract::default().constructor();
+    let default_treasury_wallet: Address = runtime::get_named_arg("default_treasury_wallet");
+    CasperIdoContract::default().constructor(default_treasury_wallet);
     let default_admin = runtime::get_caller();
     CasperIdoContract::default().add_admin_without_checked(Key::from(default_admin));
-    runtime::put_key(
-        "install_time",
-        storage::new_uref(u64::from(runtime::get_blocktime())).into(),
-    );
 }
 
 #[no_mangle]
@@ -80,6 +78,30 @@ pub extern "C" fn create_auction() {
     let schedules: Schedules = runtime::get_named_arg("schedules");
     let merkle_root: Option<String> = runtime::get_named_arg("merkle_root");
     let tiers: Tiers = runtime::get_named_arg("tiers");
+
+    let auction_token_instance = IERC20::new(auction_token);
+
+    // // Send Fee to treasury wallet
+    let fee_denominator = CasperIdoContract::default().get_fee_denominator();
+    let fee_amount = auction_token_capacity
+        .checked_mul(U256::from(fee_numerator))
+        .unwrap_or_revert()
+        .checked_div(fee_denominator)
+        .unwrap_or_revert();
+    let treasury_wallet = CasperIdoContract::default().get_treasury_wallet();
+    auction_token_instance.transfer_from(Address::from(creator), treasury_wallet, fee_amount);
+
+    // Set auction_token_capacity - fee_amount to new auction_token_capacity
+    let contract_package_hash = address_utils::get_caller_address().unwrap_or_revert();
+    let auction_token_capacity = auction_token_capacity
+        .checked_sub(fee_amount)
+        .unwrap_or_revert();
+    auction_token_instance.transfer_from(
+        Address::from(creator),
+        treasury_wallet,
+        auction_token_capacity,
+    );
+
     let auction = Auction {
         id: id.clone(),
         info: info.clone(),
@@ -104,7 +126,12 @@ pub extern "C" fn create_auction() {
 
 #[no_mangle]
 pub extern "C" fn create_order() {
-    CasperIdoContract::default().create_order();
+    let caller = runtime::get_caller();
+    let auction_id: String = runtime::get_named_arg("auction_id");
+    let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
+    let amount: U256 = runtime::get_named_arg("amount");
+
+    CasperIdoContract::default().create_order(caller, auction_id, proof, amount);
 }
 
 #[no_mangle]
@@ -142,8 +169,8 @@ pub extern "C" fn remove_admin() {
 
 #[no_mangle]
 pub extern "C" fn call() {
-    let constructor_args = runtime_args! {};
     let contract_name: String = runtime::get_named_arg("contract_name");
+    let default_treasury_wallet: Address = runtime::get_named_arg("default_treasury_wallet");
 
     let (contract_hash, _) = storage::new_contract(
         get_entry_points(),
@@ -167,6 +194,9 @@ pub extern "C" fn call() {
             .pop()
             .unwrap_or_revert();
 
+    let constructor_args = runtime_args! {
+        "default_treasury_wallet" => default_treasury_wallet
+    };
     let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
 
     let mut urefs = BTreeSet::new();

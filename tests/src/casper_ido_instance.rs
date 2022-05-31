@@ -1,30 +1,28 @@
 use casper_ido_contract::{
-    enums::BiddingToken,
+    enums::{Address, BiddingToken},
     structs::{Auction, Schedules, Tiers, Time},
 };
-use casper_types::{account::AccountHash, runtime_args, RuntimeArgs, U256};
+use casper_types::{account::AccountHash, runtime_args, ContractPackageHash, RuntimeArgs, U256};
 use test_env::{TestContract, TestEnv};
 
 pub struct CasperIdoInstance(TestContract);
 
 impl CasperIdoInstance {
-    pub fn new(env: &TestEnv, contract_name: &str, sender: AccountHash) -> CasperIdoInstance {
+    pub fn new(
+        env: &TestEnv,
+        contract_name: &str,
+        sender: AccountHash,
+        default_treasury_wallet: Address,
+    ) -> CasperIdoInstance {
         CasperIdoInstance(TestContract::new(
             env,
             "casper_ido_contract.wasm",
             contract_name,
             sender,
-            runtime_args! {},
-        ))
-    }
-
-    pub fn constructor(&self, sender: AccountHash, default_merkle_root: &str) {
-        self.0.call_contract(
-            sender,
-            "constructor",
             runtime_args! {
-            "default_merkle_root" => default_merkle_root,},
-        );
+                "default_treasury_wallet" => default_treasury_wallet
+            },
+        ))
     }
 
     pub fn create_auction(
@@ -69,8 +67,20 @@ impl CasperIdoInstance {
         self.0.query_dictionary("auctions", auction_id.to_string())
     }
 
+    pub fn contract_package_hash(&self) -> ContractPackageHash {
+        self.0.contract_package_hash()
+    }
+
     pub fn get_install_time(&self) -> u64 {
         self.0.query_named_key("install_time".to_string())
+    }
+
+    pub fn get_treasury_wallet(&self) -> Address {
+        self.0.query_named_key("treasury_wallet".to_string())
+    }
+
+    pub fn get_fee_denominator(&self) -> U256 {
+        self.0.query_named_key("fee_denominator".to_string())
     }
 
     pub fn create_order(

@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 casper-contract = { version = "1.4.4", default-features = false, features = ["test-support"] }
-casper-engine-test-support = { version = "2.1.0", features = ["test-support"] }
+casper-engine-test-support = { version = "2.2.0", features = ["test-support"] }
 casper-execution-engine = "2.0.0"
 casper-types = "1.5.0"
 casper-hashing = "1.4.3"
@@ -14,6 +14,7 @@ contract-utils = { path = "../utils/contract-utils" }
 casper-ido-contract = { path = "../contract"}
 hex = "0.4.3"
 blake2 = "0.10.4"
+base64 = "0.13.0"
 
 [features]
 default = ["casper-contract/std", "casper-types/std", "casper-contract/test-support"]

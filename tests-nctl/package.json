@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "merkletree": "ts-node ./scripts/merkletree.ts"
+    "merkletree": "ts-node ./scripts/merkletree.ts",
+    "install-contract": "ts-node ./scripts/install-contract.ts",
+    "deploy": "ts-node ./scripts/deploy.ts"
   },
   "keywords": [
     "casper-js-sdk",
@@ -15,12 +17,15 @@
   "author": "gyroflaw",
   "license": "ISC",
   "dependencies": {
+    "casper-js-client-helper": "^1.0.1",
     "casper-js-sdk": "^2.9.1",
     "keccak256": "^1.0.6",
+    "lodash": "^4.17.21",
     "merkletreejs": "^0.2.31",
     "ts-node": "^10.8.0"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.182",
     "typescript": "^4.7.2"
   }
 }

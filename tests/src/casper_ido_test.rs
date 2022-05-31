@@ -1,5 +1,5 @@
 use casper_ido_contract::{
-    enums::BiddingToken,
+    enums::{Address, BiddingToken},
     structs::{Schedules, Tiers, Time},
 };
 use casper_types::{account::AccountHash, ContractHash, U256};
@@ -15,8 +15,17 @@ struct TestContext {
 fn deploy() -> (TestEnv, TestContext, AccountHash) {
     let env = TestEnv::new();
     let owner = env.next_user();
-    let casper_ido_instance = CasperIdoInstance::new(&env, "NAME", owner);
-    let erc20_instance = ERC20Instance::new(&env, "NAME", owner);
+    let ali = env.next_user();
+    let casper_ido_instance = CasperIdoInstance::new(&env, "casper_ido", owner, Address::from(ali));
+
+    let erc20_instance = ERC20Instance::new(
+        &env,
+        "Test_Token",
+        owner,
+        "ACME",
+        18,
+        U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap(),
+    );
     let test_context = TestContext {
         casper_ido_instance,
         erc20_instance,
@@ -65,15 +74,31 @@ fn list_whitelisted_users() {
 fn test_create_auction() {
     let (env, test_context, owner) = deploy();
     let casper_ido_instance = test_context.casper_ido_instance;
+    let erc20_instance = test_context.erc20_instance;
+
     let id = "swappery";
     let info =
         "{\n  \"name\":\"The Swappery\",\n  \"info\":\"The Coolest DEX on Casper Network\"\n}";
     let auction_start_time = Time::from(1653728791085u64);
     let auction_end_time = Time::from(1653728791085u64);
     let project_open_time = Time::from(1653728791085u64);
-    let auction_token = ContractHash::new([1u8; 32]).to_formatted_string();
+
+    let auction_token = erc20_instance.contract_hash().to_formatted_string();
     let auction_token_price = U256::zero();
-    let auction_token_capacity = U256::zero();
+    let auction_token_capacity = U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap();
+    erc20_instance.approve(
+        owner,
+        Address::from(casper_ido_instance.contract_package_hash()),
+        auction_token_capacity,
+    );
+    let allowance = erc20_instance
+        .allowance(
+            Address::from(owner),
+            Address::from(casper_ido_instance.contract_package_hash()),
+        )
+        .unwrap();
+    // Should approve amount equal
+    assert_eq!(allowance, auction_token_capacity);
     let bidding_token: BiddingToken = BiddingToken::Native { price: None };
     let fee_numerator: u8 = 15u8;
     let schedules: Schedules = Schedules::new();
@@ -85,22 +110,37 @@ fn test_create_auction() {
     tiers.insert(env.next_user(), U256::one());
     tiers.insert(env.next_user(), U256::from(4));
     tiers.insert(env.next_user(), U256::from(5));
-    casper_ido_instance.create_auction(
-        owner,
-        id,
-        info,
-        auction_start_time,
-        auction_end_time,
-        project_open_time,
-        &auction_token,
-        auction_token_price,
-        auction_token_capacity,
-        bidding_token,
-        fee_numerator,
-        schedules,
-        merkle_root,
-        tiers,
-    );
+    let install_time = casper_ido_instance.get_install_time();
+    println!("{:?}", install_time);
+
+    let fee = casper_ido_instance.get_fee_denominator();
+    println!("{}", fee);
+    let tresury_wallet = casper_ido_instance.get_treasury_wallet();
+    let tresury_wallet = casper_ido_instance.get_treasury_wallet();
+    println!("{:?}", tresury_wallet);
+    assert!(false);
+    // casper_ido_instance.create_auction(
+    //     owner,
+    //     id,
+    //     info,
+    //     auction_start_time,
+    //     auction_end_time,
+    //     project_open_time,
+    //     &auction_token,
+    //     auction_token_price,
+    //     auction_token_capacity,
+    //     bidding_token,
+    //     fee_numerator,
+    //     schedules,
+    //     merkle_root,
+    //     tiers,
+    // );
+    // let new_env = TestEnv::new();
+    // new_env.next_user();
+    // let tresury_wallet = new_env.next_user();
+    // let tresury_balance = erc20_instance.balance_of(Address::from(tresury_wallet));
+    // println!("{:?}", tresury_balance);
+    // assert!(false);
 }
 
 #[ignore]

@@ -4,10 +4,11 @@ use alloc::{
 };
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::{account::AccountHash, ApiError, U256};
-use contract_utils::{ContractContext, ContractStorage};
+use contract_utils::{set_key, ContractContext, ContractStorage};
 
 use crate::{
     create_auction_purse,
+    data::{FeeDeNominator, TreasuryWallet},
     enums::{Address, BiddingToken},
     event::{self, CasperIdoEvent},
     libs::merkle_tree,
@@ -16,9 +17,13 @@ use crate::{
 };
 
 pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
-    fn init(&mut self) {
+    fn init(&mut self, default_treasury_wallet: Address) {
         Auctions::init();
         merkle_tree::init();
+        TreasuryWallet::init(default_treasury_wallet);
+        FeeDeNominator::init(U256::exp10(5));
+
+        set_key("install_time", u64::from(runtime::get_blocktime()));
     }
 
     fn create_auction(&mut self, id: String, auction: Auction) {
@@ -28,18 +33,19 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             }
             None => {
                 create_auction_purse(&id);
-                Auctions::instance().set(&id, auction);
+                Auctions::instance().set(&id, auction.clone());
                 // self.emit(CasperIdoEvent::AuctionCreated { aution })
             }
         }
     }
 
-    fn create_order(&mut self) {
-        let caller = runtime::get_caller();
-        let auction_id: String = runtime::get_named_arg("auction_id");
-        let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
-        let amount: U256 = runtime::get_named_arg("amount");
-
+    fn create_order(
+        &mut self,
+        caller: AccountHash,
+        auction_id: String,
+        proof: Vec<(String, u8)>,
+        amount: U256,
+    ) {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
@@ -52,6 +58,9 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         merkle_tree::verify(auction.merkle_root.clone(), leaf, proof);
 
         // TODO SALE TIME ASSERT
+        if !auction.is_auction_time(u64::from(runtime::get_blocktime())) {
+            runtime::revert(Error::NotValidTime);
+        };
 
         let exist_order_amount = {
             let balance = auction.orders.get(&caller);
@@ -178,6 +187,14 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let merkle_root: String = runtime::get_named_arg("merkle_root");
         auction.merkle_root = Some(merkle_root);
         Auctions::instance().set(&auction_id, auction);
+    }
+
+    fn get_fee_denominator(&self) -> U256 {
+        FeeDeNominator::instance().get_fee_denominator()
+    }
+
+    fn get_treasury_wallet(&self) -> Address {
+        TreasuryWallet::instance().get_treasury_wallet()
     }
 
     fn emit(&mut self, event: CasperIdoEvent) {

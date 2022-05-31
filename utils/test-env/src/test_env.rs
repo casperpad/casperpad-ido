@@ -1,5 +1,4 @@
 use std::{
-    convert::TryInto,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -28,9 +27,7 @@ impl TestEnv {
         let since_the_epoch: u64 = now
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
-            .as_millis()
-            .try_into()
-            .unwrap();
+            .as_secs();
         deploy(
             &mut self.state.lock().unwrap().builder,
             &sender,
@@ -39,6 +36,53 @@ impl TestEnv {
             true,
             Some(since_the_epoch),
         )
+    }
+
+    pub fn run_with_condition(
+        &self,
+        sender: AccountHash,
+        session_code: DeploySource,
+        session_args: RuntimeArgs,
+        success: bool,
+    ) {
+        let now = SystemTime::now();
+        let since_the_epoch: u64 = now
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+        deploy(
+            &mut self.state.lock().unwrap().builder,
+            &sender,
+            &session_code,
+            session_args,
+            success,
+            Some(since_the_epoch),
+        )
+    }
+
+    pub fn run_with_time(
+        &self,
+        sender: AccountHash,
+        session_code: DeploySource,
+        session_args: RuntimeArgs,
+        time: SystemTime,
+    ) {
+        let since_the_epoch: u64 = time
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+        deploy(
+            &mut self.state.lock().unwrap().builder,
+            &sender,
+            &session_code,
+            session_args,
+            true,
+            Some(since_the_epoch),
+        )
+    }
+
+    pub fn get_account(&self, account_hash: AccountHash) -> Option<casper_types::account::Account> {
+        self.state.lock().unwrap().builder.get_account(account_hash)
     }
 
     pub fn next_user(&self) -> AccountHash {
@@ -57,6 +101,18 @@ impl TestEnv {
             .query_dictionary(contract_hash, dict_name.to_string(), key)
     }
 
+    pub fn query_dictionary_old<T: CLTyped + FromBytes>(
+        &self,
+        contract_hash: [u8; 32],
+        dict_name: &str,
+        key: String,
+    ) -> Result<T, String> {
+        self.state
+            .lock()
+            .unwrap()
+            .query_dictionary_old(contract_hash, dict_name.to_string(), key)
+    }
+
     pub fn query_account_named_key<T: CLTyped + FromBytes>(
         &self,
         account: AccountHash,
@@ -67,6 +123,19 @@ impl TestEnv {
             .unwrap()
             .query_account_named_key(account, path)
     }
+
+    pub fn get_account_named_key(&self, account_hash: AccountHash, key: String) -> Key {
+        self.state
+            .lock()
+            .unwrap()
+            .builder
+            .get_account(account_hash)
+            .unwrap()
+            .named_keys()
+            .get(&key)
+            .map(|key| *key)
+            .unwrap()
+    }
 }
 
 impl Default for TestEnv {
@@ -76,7 +145,7 @@ impl Default for TestEnv {
 }
 
 struct TestEnvState {
-    builder: InMemoryWasmTestBuilder,
+    pub builder: InMemoryWasmTestBuilder,
     accounts: Vec<AccountHash>,
 }
 
@@ -160,6 +229,28 @@ impl TestEnvState {
                 println!("{}", e);
                 None
             }
+        }
+    }
+
+    pub fn query_dictionary_old<T: CLTyped + FromBytes>(
+        &self,
+        contract_hash: [u8; 32],
+        dict_name: String,
+        dictionary_item_key: String,
+    ) -> Result<T, String> {
+        match query_dictionary_item(
+            &self.builder,
+            Key::Hash(contract_hash),
+            Some(dict_name),
+            dictionary_item_key,
+        ) {
+            Ok(value) => Ok(value
+                .as_cl_value()
+                .expect("should be cl value.")
+                .clone()
+                .into_t()
+                .expect("Wrong type in query result.")),
+            Err(e) => Err(e),
         }
     }
 
