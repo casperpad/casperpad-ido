@@ -1,11 +1,12 @@
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use casper_contract::contract_api::runtime;
 use casper_types::{
     account::AccountHash,
     bytesrepr::{self, FromBytes, ToBytes},
     CLType, CLTyped, ContractHash, U256,
 };
 
-use crate::enums::BiddingToken;
+use crate::{enums::BiddingToken, Error};
 
 pub type Time = u64;
 
@@ -135,11 +136,25 @@ impl FromBytes for Auction {
 }
 
 impl Auction {
-    pub fn is_after_auction_time(&self, time: Time) -> bool {
-        self.auction_end_time.gt(&time)
+    pub fn assert_before_auction_time(&self) {
+        let current_block_time = runtime::get_blocktime();
+        if !self.is_before_auction_time(u64::from(current_block_time)) {
+            runtime::revert(Error::NotValidTime);
+        }
     }
 
-    pub fn is_auction_time(&self, time: Time) -> bool {
+    pub fn assert_auction_time(&self) {
+        let current_block_time = runtime::get_blocktime();
+        if !self.is_auction_time(u64::from(current_block_time)) {
+            runtime::revert(Error::NotValidTime);
+        }
+    }
+
+    fn is_before_auction_time(&self, time: Time) -> bool {
+        self.auction_start_time.lt(&time)
+    }
+
+    fn is_auction_time(&self, time: Time) -> bool {
         time.gt(&self.auction_start_time) && time.lt(&self.auction_start_time)
     }
 }

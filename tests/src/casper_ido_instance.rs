@@ -71,8 +71,12 @@ impl CasperIdoInstance {
         self.0.contract_package_hash()
     }
 
-    pub fn get_install_time(&self) -> u64 {
-        self.0.query_named_key("install_time".to_string())
+    pub fn set_treasury_wallet(&self, sender: AccountHash, treasury_wallet: Address) {
+        self.0.call_contract(
+            sender,
+            "set_treasury_wallet",
+            runtime_args! {"treasury_wallet" => treasury_wallet},
+        );
     }
 
     pub fn get_treasury_wallet(&self) -> Address {

@@ -100,7 +100,7 @@ fn test_create_auction() {
     // Should approve amount equal
     assert_eq!(allowance, auction_token_capacity);
     let bidding_token: BiddingToken = BiddingToken::Native { price: None };
-    let fee_numerator: u8 = 15u8;
+    let fee_numerator: u8 = 255u8;
     let schedules: Schedules = Schedules::new();
     let merkle_root: Option<String> =
         Some("4946762002a6613343a97a66739a836f2c3bca1fd7004824f43a5e9b187e51f0".to_string());
@@ -110,37 +110,23 @@ fn test_create_auction() {
     tiers.insert(env.next_user(), U256::one());
     tiers.insert(env.next_user(), U256::from(4));
     tiers.insert(env.next_user(), U256::from(5));
-    let install_time = casper_ido_instance.get_install_time();
-    println!("{:?}", install_time);
 
-    let fee = casper_ido_instance.get_fee_denominator();
-    println!("{}", fee);
-    let tresury_wallet = casper_ido_instance.get_treasury_wallet();
-    let tresury_wallet = casper_ido_instance.get_treasury_wallet();
-    println!("{:?}", tresury_wallet);
-    assert!(false);
-    // casper_ido_instance.create_auction(
-    //     owner,
-    //     id,
-    //     info,
-    //     auction_start_time,
-    //     auction_end_time,
-    //     project_open_time,
-    //     &auction_token,
-    //     auction_token_price,
-    //     auction_token_capacity,
-    //     bidding_token,
-    //     fee_numerator,
-    //     schedules,
-    //     merkle_root,
-    //     tiers,
-    // );
-    // let new_env = TestEnv::new();
-    // new_env.next_user();
-    // let tresury_wallet = new_env.next_user();
-    // let tresury_balance = erc20_instance.balance_of(Address::from(tresury_wallet));
-    // println!("{:?}", tresury_balance);
-    // assert!(false);
+    casper_ido_instance.create_auction(
+        owner,
+        id,
+        info,
+        auction_start_time,
+        auction_end_time,
+        project_open_time,
+        &auction_token,
+        auction_token_price,
+        auction_token_capacity,
+        bidding_token,
+        fee_numerator,
+        schedules,
+        merkle_root,
+        tiers,
+    );
 }
 
 #[ignore]
@@ -191,7 +177,14 @@ fn should_create_order() {
 
     // let auction = casper_ido_instance.get_auction(id).unwrap();
     // println!("{:?}", auction);
-    let time = casper_ido_instance.get_install_time();
-    println!("{:?}", time);
-    assert!(false);
+}
+
+#[test]
+fn should_set_treasury_wallet() {
+    let (env, test_context, owner) = deploy();
+    let ido_contract = test_context.casper_ido_instance;
+    let treasury_wallet = Address::Account(env.next_user());
+    ido_contract.set_treasury_wallet(owner, treasury_wallet);
+    let stored_treasury_wallet = ido_contract.get_treasury_wallet();
+    assert_eq!(treasury_wallet, stored_treasury_wallet)
 }

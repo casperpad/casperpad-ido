@@ -70,7 +70,7 @@ impl TreasuryWallet {
     }
 
     pub fn set_treasury_wallet(&self, address: Address) {
-        set_key(self.key, "address");
+        set_key(self.key, address);
     }
 
     pub fn get_treasury_wallet(&self) -> Address {
@@ -100,6 +100,6 @@ impl FeeDeNominator {
     }
 
     pub fn get_fee_denominator(&self) -> U256 {
-        get_key(self.key).unwrap_or(U256::exp10(5))
+        get_key(self.key).unwrap_or(U256::exp10(4))
     }
 }

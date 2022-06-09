@@ -4,7 +4,7 @@ use alloc::{
 };
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::{account::AccountHash, ApiError, U256};
-use contract_utils::{set_key, ContractContext, ContractStorage};
+use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
     create_auction_purse,
@@ -21,11 +21,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Auctions::init();
         merkle_tree::init();
         TreasuryWallet::init(default_treasury_wallet);
-        FeeDeNominator::init(U256::exp10(5));
-
-        set_key("install_time", u64::from(runtime::get_blocktime()));
+        FeeDeNominator::init(U256::exp10(4));
     }
 
+    /// Create auction
     fn create_auction(&mut self, id: String, auction: Auction) {
         match Auctions::instance().get(&id) {
             Some(_exist_auction) => {
@@ -39,6 +38,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         }
     }
 
+    /// Create order, caller must be whitelisted and can creat in sale time.
     fn create_order(
         &mut self,
         caller: AccountHash,
@@ -49,19 +49,15 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
-        let current_block_time = runtime::get_blocktime();
-        if !auction.is_auction_time(u64::from(current_block_time)) {
-            runtime::revert(Error::NotValidTime);
-        }
-        let leaf = caller.to_string();
 
+        // Check caller is whitelisted
+        let leaf = caller.to_string();
         merkle_tree::verify(auction.merkle_root.clone(), leaf, proof);
 
-        // TODO SALE TIME ASSERT
-        if !auction.is_auction_time(u64::from(runtime::get_blocktime())) {
-            runtime::revert(Error::NotValidTime);
-        };
+        // Check current time is between sale time
+        auction.assert_auction_time();
 
+        // Check order amount is less than tier
         let exist_order_amount = {
             let balance = auction.orders.get(&caller);
             match balance {
@@ -90,30 +86,38 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
+        auction.assert_before_auction_time();
 
         match auction.orders.get(&caller) {
             Some(_order_amount) => {
+                // TODO refund
                 auction.orders.remove(&caller);
+                Auctions::instance().set(&auction_id, auction);
             }
             None => runtime::revert(Error::NotExistOrder),
         }
     }
 
+    /// Whitelisted user can claim after schedule time
     fn claim(&mut self, caller: AccountHash, auction_id: String, schedule_time: Time) {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
 
-        if auction.claims.get(&(caller, schedule_time)).is_some() {
-            runtime::revert(Error::AlreadyClaimed);
-        }
+        let current_block_time = runtime::get_blocktime();
 
-        // TODO after sale time
+        if schedule_time.lt(&u64::from(current_block_time)) {
+            runtime::revert(Error::NotValidTime);
+        }
 
         let order_amount = *auction
             .orders
             .get(&caller)
             .unwrap_or_revert_with(Error::NotExistOrder);
+
+        if auction.claims.get(&(caller, schedule_time)).is_some() {
+            runtime::revert(Error::AlreadyClaimed);
+        }
         let schedule_percent = *auction
             .schedules
             .get(&schedule_time)
@@ -139,9 +143,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Auctions::instance().set(&auction_id, auction);
     }
 
-    fn set_cspr_price(&mut self) {
-        let auction_id: String = runtime::get_named_arg("auction_id");
-        let new_price: U256 = runtime::get_named_arg("price");
+    /// Set CSPR price for given auction, if ERC20 token is used for payment abort, should set to only admin call
+    fn set_cspr_price(&mut self, auction_id: String, price: U256) {
+        // let auction_id: String = runtime::get_named_arg("auction_id");
+        // let new_price: U256 = runtime::get_named_arg("price");
 
         let mut auction = Auctions::instance()
             .get(&auction_id)
@@ -150,11 +155,12 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         if auction.creator != runtime::get_caller() {
             runtime::revert(ApiError::PermissionDenied);
         }
+        // Can set CSPR price before sale time
+        auction.assert_before_auction_time();
+
         match auction.bidding_token {
             BiddingToken::Native { price: _ } => {
-                auction.bidding_token = BiddingToken::Native {
-                    price: Some(new_price),
-                };
+                auction.bidding_token = BiddingToken::Native { price: Some(price) };
             }
             _ => {
                 runtime::revert(ApiError::InvalidArgument);
@@ -163,34 +169,41 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Auctions::instance().set(&auction_id, auction);
     }
 
-    fn set_tiers(&mut self) {
-        let auction_id: String = runtime::get_named_arg("auction_id");
+    fn set_tiers(&mut self, auction_id: String, tiers: &mut Tiers) {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
         if auction.creator != runtime::get_caller() {
             runtime::revert(ApiError::PermissionDenied);
         }
-        let mut tiers: Tiers = runtime::get_named_arg("tiers");
-        auction.tiers.append(&mut tiers);
+        auction.tiers.append(tiers);
         Auctions::instance().set(&auction_id, auction);
     }
 
-    fn set_merkle_root(&mut self) {
-        let auction_id: String = runtime::get_named_arg("auction_id");
+    /// Set merkle_root for given aution, should set to only admin call
+    fn set_merkle_root(&mut self, auction_id: String, merkle_root: String) {
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);
         if auction.creator != runtime::get_caller() {
             runtime::revert(ApiError::PermissionDenied);
         }
-        let merkle_root: String = runtime::get_named_arg("merkle_root");
+
         auction.merkle_root = Some(merkle_root);
         Auctions::instance().set(&auction_id, auction);
     }
 
+    fn set_fee_denominator(&self, fee_denominator: U256) {
+        FeeDeNominator::instance().set_fee_denominator(fee_denominator);
+    }
+
     fn get_fee_denominator(&self) -> U256 {
         FeeDeNominator::instance().get_fee_denominator()
+    }
+
+    /// Set treasury wallet for fee, should set to only admin call
+    fn set_treasury_wallet(&self, treasury_wallet: Address) {
+        TreasuryWallet::instance().set_treasury_wallet(treasury_wallet);
     }
 
     fn get_treasury_wallet(&self) -> Address {
