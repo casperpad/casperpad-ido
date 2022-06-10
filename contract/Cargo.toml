@@ -21,7 +21,13 @@ contract-utils = { path = "../utils/contract-utils" }
 [[bin]]
 name = "casper_ido_contract"
 path = "bin/casper_ido_contract.rs"
-# path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[[bin]]
+name = "pre_create_order"
+path = "bin/pre_create_order.rs"
 bench = false
 doctest = false
 test = false

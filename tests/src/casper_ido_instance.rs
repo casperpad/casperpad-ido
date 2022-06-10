@@ -2,7 +2,9 @@ use casper_ido_contract::{
     enums::{Address, BiddingToken},
     structs::{Auction, Schedules, Tiers, Time},
 };
-use casper_types::{account::AccountHash, runtime_args, ContractPackageHash, RuntimeArgs, U256};
+use casper_types::{
+    account::AccountHash, runtime_args, ContractHash, ContractPackageHash, RuntimeArgs, U256,
+};
 use test_env::{TestContract, TestEnv};
 
 pub struct CasperIdoInstance(TestContract);
@@ -63,12 +65,18 @@ impl CasperIdoInstance {
         )
     }
 
-    pub fn get_auction(&self, auction_id: &str) -> Option<Auction> {
-        self.0.query_dictionary("auctions", auction_id.to_string())
+    pub fn get_auction(&self, auction_id: &str) -> Auction {
+        self.0
+            .query_dictionary("auctions", auction_id.to_string())
+            .unwrap()
     }
 
     pub fn contract_package_hash(&self) -> ContractPackageHash {
         self.0.contract_package_hash()
+    }
+
+    pub fn contract_hash(&self) -> ContractHash {
+        self.0.contract_hash()
     }
 
     pub fn set_treasury_wallet(&self, sender: AccountHash, treasury_wallet: Address) {
@@ -87,22 +95,30 @@ impl CasperIdoInstance {
         self.0.query_named_key("fee_denominator".to_string())
     }
 
+    pub fn set_cspr_price(&self, sender: AccountHash, auction_id: &str, price: U256) {
+        self.0.call_contract(
+            sender,
+            "set_cspr_price",
+            runtime_args! {"auction_id" => auction_id, "price" => price},
+        );
+    }
+
     pub fn create_order(
         &self,
         sender: AccountHash,
         auction_id: &str,
         proof: Vec<(String, u8)>,
+        token: String,
         amount: U256,
     ) {
         self.0.call_contract(
             sender,
-            "create_order",
+            "set_cspr_price",
             runtime_args! {
-                "auction_id" => auction_id,
-                "proof" => proof,
-                "amount" => amount,
-
-            },
-        )
+            "auction_id" => auction_id,
+            "proof" => proof,
+            "token" => token,
+            "amount" => amount},
+        );
     }
 }

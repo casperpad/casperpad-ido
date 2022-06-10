@@ -22,7 +22,7 @@ pub enum Error {
     AlreadyExistAuction = 43,
     SaleNotStarted = 44,
     SaleEnded = 45,
-    NotValidTime = 46,
+    InvalidTime = 46,
     NotWhiteListed = 47,
     InvalidCSPRPrice = 48,
     AlreadyClaimed = 49,
@@ -30,7 +30,9 @@ pub enum Error {
     OutOfTier = 51,
     OutOfCapacity = 52,
     NotExistOrder = 53,
-    NotValidSchedule = 54,
+    InvalidSchedule = 54,
+    InvalidPayToken = 55,
+
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,

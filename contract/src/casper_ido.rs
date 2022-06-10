@@ -2,16 +2,22 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
-use casper_types::{account::AccountHash, ApiError, U256};
+use casper_contract::{
+    contract_api::{runtime, system},
+    unwrap_or_revert::UnwrapOrRevert,
+};
+use casper_types::{account::AccountHash, ApiError, ContractHash, URef, U256};
 use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
-    create_auction_purse,
+    auction_purse, create_auction_purse,
     data::{FeeDeNominator, TreasuryWallet},
     enums::{Address, BiddingToken},
     event::{self, CasperIdoEvent},
-    libs::merkle_tree,
+    libs::{
+        conversion::{u256_to_512, u512_to_u256},
+        merkle_tree,
+    },
     structs::{Auction, Tiers, Time},
     Auctions, Error, IERC20,
 };
@@ -44,6 +50,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         caller: AccountHash,
         auction_id: String,
         proof: Vec<(String, u8)>,
+        token: ContractHash,
         amount: U256,
     ) {
         let mut auction = Auctions::instance()
@@ -57,31 +64,107 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         // Check current time is between sale time
         auction.assert_auction_time();
 
-        // Check order amount is less than tier
-        let exist_order_amount = {
-            let balance = auction.orders.get(&caller);
-            match balance {
-                Some(x) => *x,
-                None => U256::default(),
+        // Check payment is right
+        let order_amount_in_usd = match auction.bidding_token.clone() {
+            BiddingToken::Native { price: _ } => {
+                runtime::revert(Error::InvalidPayToken);
+            }
+            BiddingToken::ERC20s { tokens_with_price } => {
+                let paytoken_price = tokens_with_price
+                    .get(&token)
+                    .unwrap_or_revert_with(Error::InvalidPayToken);
+                IERC20::new(token).transfer_from(
+                    Address::from(caller),
+                    Address::from(auction.creator),
+                    amount,
+                );
+                amount.checked_mul(*paytoken_price).unwrap_or_revert()
             }
         };
-        match auction.tiers.get(&caller) {
-            Some(tier) => {
-                if tier.lt(&amount.checked_add(exist_order_amount).unwrap()) {
-                    runtime::revert(Error::OutOfTier);
-                }
-            }
-            None => {
-                runtime::revert(Error::TierNotSetted);
-            }
+
+        // Check order amount is less than tier
+        let exist_order_amount = *auction.orders.get(&caller).unwrap_or(&U256::zero());
+
+        let unchecked_new_order_amount =
+            order_amount_in_usd.checked_add(exist_order_amount).unwrap();
+
+        let caller_tier = *auction
+            .tiers
+            .get(&caller)
+            .unwrap_or_revert_with(Error::TierNotSetted);
+
+        if caller_tier.lt(&unchecked_new_order_amount) {
+            runtime::revert(Error::OutOfTier);
         }
 
-        auction
-            .orders
-            .insert(caller, amount.checked_add(exist_order_amount).unwrap());
+        auction.orders.insert(caller, unchecked_new_order_amount);
         Auctions::instance().set(&auction_id, auction);
     }
 
+    fn create_order_cspr(
+        &mut self,
+        caller: AccountHash,
+        auction_id: String,
+        proof: Vec<(String, u8)>,
+        deposit_purse: URef,
+    ) {
+        let mut auction = Auctions::instance()
+            .get(&auction_id)
+            .unwrap_or_revert_with(Error::NotExistAuction);
+
+        // Check caller is whitelisted
+        let leaf = caller.to_string();
+        merkle_tree::verify(auction.merkle_root.clone(), leaf, proof);
+
+        // Check current time is between sale time
+        // TODO Check
+        auction.assert_auction_time();
+
+        // Check payment is right
+        let order_amount_in_usd = match auction.bidding_token.clone() {
+            BiddingToken::Native { price } => {
+                let purse_balance = system::get_purse_balance(deposit_purse).unwrap_or_default();
+                system::transfer_from_purse_to_account(
+                    deposit_purse,
+                    auction.creator,
+                    purse_balance,
+                    None,
+                )
+                .unwrap();
+                u512_to_u256(&purse_balance)
+                    .unwrap_or_revert()
+                    .checked_mul(price.unwrap_or_revert())
+                    .unwrap_or_revert()
+                    .checked_div(U256::exp10(9))
+                    .unwrap_or_revert()
+            }
+            BiddingToken::ERC20s {
+                tokens_with_price: _,
+            } => {
+                runtime::revert(Error::InvalidPayToken);
+            }
+        };
+
+        // Check order amount is less than tier
+        let exist_order_amount = *auction.orders.get(&caller).unwrap_or(&U256::zero());
+
+        let unchecked_new_order_amount =
+            order_amount_in_usd.checked_add(exist_order_amount).unwrap();
+
+        let caller_tier = *auction
+            .tiers
+            .get(&caller)
+            .unwrap_or_revert_with(Error::TierNotSetted);
+
+        if caller_tier.lt(&unchecked_new_order_amount) {
+            runtime::revert(Error::OutOfTier);
+        }
+
+        auction.orders.insert(caller, unchecked_new_order_amount);
+        Auctions::instance().set(&auction_id, auction);
+    }
+
+    /// Cancel order, currently support CSPR
     fn cancel_order(&mut self, caller: AccountHash, auction_id: String) {
         let mut auction = Auctions::instance()
             .get(&auction_id)
@@ -89,8 +172,24 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         auction.assert_before_auction_time();
 
         match auction.orders.get(&caller) {
-            Some(_order_amount) => {
-                // TODO refund
+            Some(order_amount) => {
+                match auction.bidding_token {
+                    BiddingToken::Native { price: _ } => {
+                        let auction_purese = auction_purse(&auction_id);
+                        system::transfer_from_purse_to_account(
+                            auction_purese,
+                            runtime::get_caller(),
+                            u256_to_512(order_amount).unwrap(),
+                            None,
+                        )
+                        .unwrap();
+                    }
+                    BiddingToken::ERC20s {
+                        tokens_with_price: _,
+                    } => {
+                        runtime::revert(Error::PermissionDenied);
+                    }
+                }
                 auction.orders.remove(&caller);
                 Auctions::instance().set(&auction_id, auction);
             }
@@ -107,7 +206,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let current_block_time = runtime::get_blocktime();
 
         if schedule_time.lt(&u64::from(current_block_time)) {
-            runtime::revert(Error::NotValidTime);
+            runtime::revert(Error::InvalidTime);
         }
 
         let order_amount = *auction
@@ -121,7 +220,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let schedule_percent = *auction
             .schedules
             .get(&schedule_time)
-            .unwrap_or_revert_with(Error::NotValidSchedule);
+            .unwrap_or_revert_with(Error::InvalidSchedule);
         let percent_denominator = U256::exp10(5);
         let transfer_amount_in_usd = order_amount
             .checked_add(schedule_percent)
@@ -145,9 +244,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     /// Set CSPR price for given auction, if ERC20 token is used for payment abort, should set to only admin call
     fn set_cspr_price(&mut self, auction_id: String, price: U256) {
-        // let auction_id: String = runtime::get_named_arg("auction_id");
-        // let new_price: U256 = runtime::get_named_arg("price");
-
         let mut auction = Auctions::instance()
             .get(&auction_id)
             .unwrap_or_revert_with(Error::NotExistAuction);

@@ -4,9 +4,7 @@ use casper_engine_test_support::{
     DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, ARG_AMOUNT,
     DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT,
 };
-use casper_execution_engine::core::engine_state::{
-    execute_request::ExecuteRequest,
-};
+use casper_execution_engine::core::engine_state::execute_request::ExecuteRequest;
 
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, system::mint, CLTyped, ContractHash,
@@ -34,7 +32,7 @@ pub fn fund_account(account: &AccountHash) -> ExecuteRequest {
         .with_authorization_keys(&[*DEFAULT_ACCOUNT_ADDR])
         .with_empty_payment_bytes(runtime_args! {ARG_AMOUNT => *DEFAULT_PAYMENT})
         .with_transfer_args(runtime_args! {
-            mint::ARG_AMOUNT => U512::from(30_000_000_000_000_u64),
+            mint::ARG_AMOUNT => U512::from(100_000_u64).checked_mul(U512::exp10(9)).unwrap(),
             mint::ARG_TARGET => *account,
             mint::ARG_ID => <Option::<u64>>::None
         })

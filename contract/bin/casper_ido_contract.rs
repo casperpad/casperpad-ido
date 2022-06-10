@@ -137,16 +137,33 @@ pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
     let auction_id: String = runtime::get_named_arg("auction_id");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
+    let token: ContractHash = {
+        let token_contract_string: String = runtime::get_named_arg("token");
+        ContractHash::from_formatted_str(&token_contract_string).unwrap()
+    };
     let amount: U256 = runtime::get_named_arg("amount");
 
-    CasperIdoContract::default().create_order(caller, auction_id, proof, amount);
+    CasperIdoContract::default().create_order(caller, auction_id, proof, token, amount);
+}
+
+#[no_mangle]
+pub extern "C" fn create_order_cspr() {
+    let caller = runtime::get_caller();
+    let auction_id: String = runtime::get_named_arg("auction_id");
+    let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
+    let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
+
+    CasperIdoContract::default().create_order_cspr(caller, auction_id, proof, deposit_purse);
 }
 
 #[no_mangle]
 pub extern "C" fn cancel_order() {
     let caller = runtime::get_caller();
     let auction_id: String = runtime::get_named_arg("auction_id");
-    CasperIdoContract::default().cancel_order(caller, auction_id)
+
+    CasperIdoContract::default().set_reentrancy();
+    CasperIdoContract::default().cancel_order(caller, auction_id);
+    CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
@@ -183,6 +200,7 @@ pub extern "C" fn set_merkle_root() {
 
 #[no_mangle]
 pub extern "C" fn set_fee_denominator() {
+    CasperIdoContract::default().assert_caller_is_admin();
     let fee_denominator: U256 = runtime::get_named_arg("fee_denominator");
     CasperIdoContract::default().set_fee_denominator(fee_denominator);
 }
@@ -309,7 +327,26 @@ fn get_entry_points() -> EntryPoints {
                     Box::new(CLType::U8),
                 ]))),
             ),
+            Parameter::new("token".to_string(), CLType::String),
             Parameter::new("amount".to_string(), CLType::U256),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "create_order_cspr",
+        vec![
+            Parameter::new("auction_id".to_string(), CLType::String),
+            Parameter::new(
+                "proof".to_string(),
+                CLType::List(Box::new(CLType::Tuple2([
+                    Box::new(CLType::String),
+                    Box::new(CLType::U8),
+                ]))),
+            ),
+            Parameter::new("deposit_purse".to_string(), CLType::URef),
         ],
         CLType::Unit,
         EntryPointAccess::Public,

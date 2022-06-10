@@ -139,22 +139,22 @@ impl Auction {
     pub fn assert_before_auction_time(&self) {
         let current_block_time = runtime::get_blocktime();
         if !self.is_before_auction_time(u64::from(current_block_time)) {
-            runtime::revert(Error::NotValidTime);
+            runtime::revert(Error::InvalidTime);
         }
     }
 
     pub fn assert_auction_time(&self) {
         let current_block_time = runtime::get_blocktime();
         if !self.is_auction_time(u64::from(current_block_time)) {
-            runtime::revert(Error::NotValidTime);
+            runtime::revert(Error::InvalidTime);
         }
     }
 
     fn is_before_auction_time(&self, time: Time) -> bool {
-        self.auction_start_time.lt(&time)
+        time.lt(&self.auction_start_time)
     }
 
     fn is_auction_time(&self, time: Time) -> bool {
-        time.gt(&self.auction_start_time) && time.lt(&self.auction_start_time)
+        time.gt(&self.auction_start_time) && time.lt(&self.auction_end_time)
     }
 }
