@@ -9,12 +9,13 @@ mod data;
 pub mod enums;
 mod error;
 mod event;
+mod factory;
 mod interfaces;
 pub mod libs;
 pub mod structs;
 
 pub use casper_ido::CasperIdo;
-pub use data::Auctions;
-pub use data::{auction_purse, create_auction_purse};
 pub use error::Error;
+pub use factory::Factory;
+pub use interfaces::IFactory;
 pub use interfaces::IERC20;

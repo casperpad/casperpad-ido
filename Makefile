@@ -10,6 +10,7 @@ build-contracts:
 
 test: build-contracts
 	mkdir -p tests/wasm
+	cp target/wasm32-unknown-unknown/release/factory_contract.wasm tests/wasm
 	cp target/wasm32-unknown-unknown/release/casper_ido_contract.wasm tests/wasm
 	cp target/wasm32-unknown-unknown/release/pre_create_order.wasm tests/wasm
 	cd tests && cargo test

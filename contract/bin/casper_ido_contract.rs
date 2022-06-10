@@ -11,7 +11,7 @@ extern crate alloc;
 
 use alloc::{
     boxed::Box,
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     format,
     string::{String, ToString},
     vec,
@@ -23,17 +23,16 @@ use casper_contract::{
 };
 use casper_ido_contract::{
     enums::{Address, BiddingToken},
-    libs::address_utils,
-    structs::{Auction, Claims, Orders, Schedules, Tiers, Time},
-    CasperIdo, IERC20,
+    structs::{Schedules, Tiers, Time},
+    CasperIdo, IFactory,
 };
 
 use casper_types::{
     account::AccountHash, runtime_args, CLType, CLTyped, ContractHash, ContractPackageHash,
-    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs,
-    URef, U256,
+    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Parameter, RuntimeArgs, URef,
+    U256,
 };
-use contract_utils::{AdminControl, ContractContext, OnChainContractStorage, ReentrancyGuard};
+use contract_utils::{set_key, ContractContext, OnChainContractStorage, ReentrancyGuard};
 
 #[derive(Default)]
 struct CasperIdoContract(OnChainContractStorage);
@@ -45,197 +44,176 @@ impl ContractContext<OnChainContractStorage> for CasperIdoContract {
 }
 
 impl CasperIdo<OnChainContractStorage> for CasperIdoContract {}
-impl AdminControl<OnChainContractStorage> for CasperIdoContract {}
 impl ReentrancyGuard<OnChainContractStorage> for CasperIdoContract {}
 
 impl CasperIdoContract {
-    fn constructor(&mut self, default_treasury_wallet: Address) {
-        CasperIdo::init(self, default_treasury_wallet);
-        AdminControl::init(self);
+    fn constructor(
+        &mut self,
+        factory_contract: ContractHash,
+        info: &str,
+        auction_start_time: Time,
+        auction_end_time: Time,
+        launch_time: Time,
+        auction_token: Option<ContractHash>,
+        auction_token_price: U256,
+        auction_token_capacity: U256,
+        bidding_token: BiddingToken,
+        schedules: Schedules,
+    ) {
+        CasperIdo::init(
+            self,
+            factory_contract,
+            info,
+            auction_start_time,
+            auction_end_time,
+            launch_time,
+            auction_token,
+            auction_token_price,
+            auction_token_capacity,
+            bidding_token,
+            schedules,
+        );
         ReentrancyGuard::init(self);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn constructor() {
-    let default_treasury_wallet: Address = runtime::get_named_arg("default_treasury_wallet");
-    CasperIdoContract::default().constructor(default_treasury_wallet);
-    let default_admin = runtime::get_caller();
-    CasperIdoContract::default().add_admin_without_checked(Key::from(default_admin));
-}
-
-#[no_mangle]
-pub extern "C" fn create_auction() {
-    CasperIdoContract::default().assert_caller_is_admin();
-
-    let id: String = runtime::get_named_arg("id");
+    let factory_contract: ContractHash = {
+        let constract_str: String = runtime::get_named_arg("factory_contract");
+        ContractHash::from_formatted_str(&constract_str).unwrap()
+    };
     let info: String = runtime::get_named_arg("info");
     let creator = runtime::get_caller();
     let auction_created_time = Time::from(runtime::get_blocktime());
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
-    let project_open_time: Time = runtime::get_named_arg("project_open_time");
+    let launch_time: Time = runtime::get_named_arg("launch_time");
     let auction_token = {
-        let auction_token_string: String = runtime::get_named_arg("auction_token");
-        ContractHash::from_formatted_str(&auction_token_string).unwrap()
+        let auction_token_string: Option<String> = runtime::get_named_arg("auction_token");
+        auction_token_string.map(|str| ContractHash::from_formatted_str(&str).unwrap())
     };
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
     let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
     let bidding_token: BiddingToken = runtime::get_named_arg("bidding_token");
-    let fee_numerator: u8 = runtime::get_named_arg("fee_numerator");
     let schedules: Schedules = runtime::get_named_arg("schedules");
-    let merkle_root: Option<String> = runtime::get_named_arg("merkle_root");
-    let tiers: Tiers = runtime::get_named_arg("tiers");
 
-    let auction_token_instance = IERC20::new(auction_token);
-
-    // // Send Fee to treasury wallet
-    let fee_denominator = CasperIdoContract::default().get_fee_denominator();
-    let fee_amount = auction_token_capacity
-        .checked_mul(U256::from(fee_numerator))
-        .unwrap_or_revert()
-        .checked_div(fee_denominator)
-        .unwrap_or_revert();
-    let treasury_wallet = CasperIdoContract::default().get_treasury_wallet();
-    auction_token_instance.transfer_from(Address::from(creator), treasury_wallet, fee_amount);
-
-    // Set auction_token_capacity - fee_amount to new auction_token_capacity
-    let contract_package_hash = address_utils::get_caller_address().unwrap_or_revert();
-    let auction_token_capacity = auction_token_capacity
-        .checked_sub(fee_amount)
-        .unwrap_or_revert();
-    auction_token_instance.transfer_from(
-        Address::from(creator),
-        contract_package_hash,
-        auction_token_capacity,
-    );
-
-    let auction = Auction {
-        id: id.clone(),
-        info: info.clone(),
-        creator,
-        auction_created_time,
+    CasperIdoContract::default().constructor(
+        factory_contract,
+        &info,
         auction_start_time,
         auction_end_time,
-        project_open_time,
+        launch_time,
         auction_token,
         auction_token_price,
         auction_token_capacity,
-        bidding_token: bidding_token.clone(),
-        fee_numerator,
-        orders: Orders::new(),
-        claims: Claims::new(),
-        schedules: schedules.clone(),
-        merkle_root,
-        tiers,
-    };
-    CasperIdoContract::default().create_auction(id, auction);
+        bidding_token,
+        schedules,
+    );
+    // IFactory::new(factory_contract).add_auction(CasperIdoContract::default().contract_hash());
+}
+
+#[no_mangle]
+pub extern "C" fn create_auction() {
+
+    // let id: String = runtime::get_named_arg("id");
+
+    // let auction_token_instance = IERC20::new(auction_token);
+
+    // // // Send Fee to treasury wallet
+    // let fee_denominator = CasperIdoContract::default().get_fee_denominator();
+    // let fee_amount = auction_token_capacity
+    //     .checked_mul(U256::from(fee_numerator))
+    //     .unwrap_or_revert()
+    //     .checked_div(fee_denominator)
+    //     .unwrap_or_revert();
+    // let treasury_wallet = CasperIdoContract::default().get_treasury_wallet();
+    // auction_token_instance.transfer_from(Address::from(creator), treasury_wallet, fee_amount);
+
+    // // Set auction_token_capacity - fee_amount to new auction_token_capacity
+    // let contract_package_hash = address_utils::get_caller_address().unwrap_or_revert();
+    // let auction_token_capacity = auction_token_capacity
+    //     .checked_sub(fee_amount)
+    //     .unwrap_or_revert();
+    // auction_token_instance.transfer_from(
+    //     Address::from(creator),
+    //     contract_package_hash,
+    //     auction_token_capacity,
+    // );
 }
 
 #[no_mangle]
 pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
-    let auction_id: String = runtime::get_named_arg("auction_id");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let token: ContractHash = {
         let token_contract_string: String = runtime::get_named_arg("token");
         ContractHash::from_formatted_str(&token_contract_string).unwrap()
     };
     let amount: U256 = runtime::get_named_arg("amount");
-
-    CasperIdoContract::default().create_order(caller, auction_id, proof, token, amount);
+    CasperIdoContract::default().create_order(caller, proof, token, amount);
 }
 
 #[no_mangle]
 pub extern "C" fn create_order_cspr() {
     let caller = runtime::get_caller();
-    let auction_id: String = runtime::get_named_arg("auction_id");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
-
-    CasperIdoContract::default().create_order_cspr(caller, auction_id, proof, deposit_purse);
+    CasperIdoContract::default().create_order_cspr(caller, proof, deposit_purse);
 }
 
 #[no_mangle]
 pub extern "C" fn cancel_order() {
     let caller = runtime::get_caller();
-    let auction_id: String = runtime::get_named_arg("auction_id");
 
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().cancel_order(caller, auction_id);
+    CasperIdoContract::default().cancel_order(caller);
     CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
 pub extern "C" fn claim() {
     let caller = runtime::get_caller();
-    let auction_id: String = runtime::get_named_arg("auction_id");
     let schedule_time: Time = runtime::get_named_arg("schedule_time");
 
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().claim(caller, auction_id, schedule_time);
+    CasperIdoContract::default().claim(caller, schedule_time);
     CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
 pub extern "C" fn set_cspr_price() {
-    let auction_id: String = runtime::get_named_arg("auction_id");
     let price: U256 = runtime::get_named_arg("price");
-    CasperIdoContract::default().set_cspr_price(auction_id, price);
+    // CasperIdoContract::default().set_cspr_price(price);
+    set_key("result", price);
 }
 
 #[no_mangle]
 pub extern "C" fn set_tiers() {
-    let auction_id: String = runtime::get_named_arg("auction_id");
-    let mut tiers: Tiers = runtime::get_named_arg("tiers");
-    CasperIdoContract::default().set_tiers(auction_id, &mut tiers);
+    let mut tiers: BTreeMap<AccountHash, U256> = runtime::get_named_arg("tiers");
+    CasperIdoContract::default().set_tiers(&mut tiers);
 }
 
 #[no_mangle]
 pub extern "C" fn set_merkle_root() {
-    let auction_id: String = runtime::get_named_arg("auction_id");
     let merkle_root: String = runtime::get_named_arg("merkle_root");
-    CasperIdoContract::default().set_merkle_root(auction_id, merkle_root);
-}
-
-#[no_mangle]
-pub extern "C" fn set_fee_denominator() {
-    CasperIdoContract::default().assert_caller_is_admin();
-    let fee_denominator: U256 = runtime::get_named_arg("fee_denominator");
-    CasperIdoContract::default().set_fee_denominator(fee_denominator);
-}
-
-#[no_mangle]
-pub extern "C" fn set_treasury_wallet() {
-    CasperIdoContract::default().assert_caller_is_admin();
-    let treasury_wallet: Address = runtime::get_named_arg("treasury_wallet");
-    CasperIdoContract::default().set_treasury_wallet(treasury_wallet);
-}
-
-#[no_mangle]
-pub extern "C" fn add_admin() {
-    let admin: AccountHash = {
-        let admin_string: String = runtime::get_named_arg("admin");
-        AccountHash::from_formatted_str(&admin_string).unwrap()
-    };
-    CasperIdoContract::default().add_admin(Key::from(admin));
-}
-
-#[no_mangle]
-pub extern "C" fn remove_admin() {
-    let admin: AccountHash = {
-        let admin_string: String = runtime::get_named_arg("admin");
-        AccountHash::from_formatted_str(&admin_string).unwrap()
-    };
-    CasperIdoContract::default().disable_admin(Key::from(admin));
+    CasperIdoContract::default().set_merkle_root(merkle_root);
 }
 
 #[no_mangle]
 pub extern "C" fn call() {
     let contract_name: String = runtime::get_named_arg("contract_name");
-    let default_treasury_wallet: Address = runtime::get_named_arg("default_treasury_wallet");
+    let factory_contract: String = runtime::get_named_arg("factory_contract");
+    let info: String = runtime::get_named_arg("info");
+    let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
+    let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
+    let launch_time: Time = runtime::get_named_arg("launch_time");
+    let auction_token: Option<String> = runtime::get_named_arg("auction_token");
+    let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
+    let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
+    let bidding_token: BiddingToken = runtime::get_named_arg("bidding_token");
+    let schedules: Schedules = runtime::get_named_arg("schedules");
 
-    storage::new_uref(default_treasury_wallet); // TODO Check why not working on init
     let (contract_hash, _) = storage::new_contract(
         get_entry_points(),
         None,
@@ -259,7 +237,16 @@ pub extern "C" fn call() {
             .unwrap_or_revert();
 
     let constructor_args = runtime_args! {
-        "default_treasury_wallet" => default_treasury_wallet
+        "factory_contract" => factory_contract,
+        "info" => info,
+        "auction_start_time" => auction_start_time,
+        "auction_end_time" => auction_end_time,
+        "launch_time" => launch_time,
+        "auction_token" => auction_token,
+        "auction_token_price" => auction_token_price,
+        "auction_token_capacity" => auction_token_capacity,
+        "bidding_token" => bidding_token,
+        "schedules" => schedules,
     };
     let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
 
@@ -374,10 +361,7 @@ fn get_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(EntryPoint::new(
         "set_cspr_price",
-        vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
-            Parameter::new("price".to_string(), CLType::U256),
-        ],
+        vec![Parameter::new("price".to_string(), CLType::U256)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -400,41 +384,6 @@ fn get_entry_points() -> EntryPoints {
             Parameter::new("auction_id".to_string(), CLType::String),
             Parameter::new("merkle_root".to_string(), CLType::String),
         ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
-        "set_fee_denominator",
-        vec![Parameter::new("fee_denominator".to_string(), CLType::U256)],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
-        "set_treasury_wallet",
-        vec![Parameter::new(
-            "treasury_wallet".to_string(),
-            Address::cl_type(),
-        )],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
-        "add_admin",
-        vec![Parameter::new("admin".to_string(), CLType::String)],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
-        "remove_admin",
-        vec![Parameter::new("admin".to_string(), CLType::String)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
