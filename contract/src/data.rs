@@ -6,6 +6,7 @@ use contract_utils::{get_key, key_and_value_to_str, key_to_str, set_key, Dict};
 use crate::{
     enums::BiddingToken,
     structs::{Schedules, Time},
+    Error,
 };
 
 pub const ORDERS_DIC: &str = "orders";
@@ -98,7 +99,7 @@ pub fn _set_merkle_root(root: String) {
 }
 
 pub fn _get_merkle_root() -> String {
-    get_key(MERKLE_ROOT).unwrap_or_revert()
+    get_key(MERKLE_ROOT).unwrap_or_revert_with(Error::InvalidMerkleRoot)
 }
 
 const AUCTION_START_TIME: &str = "auction_start_time";

@@ -10,7 +10,7 @@ use casper_contract::{
 use casper_types::{
     account::AccountHash, ApiError, ContractHash, ContractPackageHash, Key, URef, U256,
 };
-use contract_utils::{ContractContext, ContractStorage};
+use contract_utils::{set_key, ContractContext, ContractStorage};
 
 use crate::{
     data::{
@@ -56,7 +56,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_bidding_token(bidding_token);
         set_schedules(schedules);
         set_factory_contract(factory_contract);
-
+        _set_merkle_root("".to_string());
         Orders::init();
         Claims::init();
     }
@@ -126,13 +126,9 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let unchecked_new_order_amount =
             order_amount_in_usd.checked_add(exist_order_amount).unwrap();
 
-        // let caller_tier = Tiers::instance()
-        //     .get(&Key::from(caller))
-        //     .unwrap_or_revert_with(Error::TierNotSetted);
-
-        // if caller_tier.lt(&unchecked_new_order_amount) {
-        //     runtime::revert(Error::OutOfTier);
-        // }
+        if tier.lt(&unchecked_new_order_amount) {
+            runtime::revert(Error::OutOfTier);
+        }
 
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
@@ -148,16 +144,15 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let leaf = format!("{}_{:?}", caller.to_string(), tier);
         merkle_tree::verify(self.get_merkle_root(), leaf, proof);
 
-        // Check current time is between sale time
-        // TODO Check
-        self._assert_auction_time();
+        // Check current time is between auction time
+        // self._assert_auction_time();
 
         let bidding_token = get_bidding_token();
 
         // Check payment is right
         let order_amount_in_usd = match bidding_token.clone() {
             BiddingToken::Native { price } => {
-                let purse_balance = system::get_purse_balance(deposit_purse).unwrap_or_default();
+                let purse_balance = system::get_purse_balance(deposit_purse).unwrap_or_revert();
                 let auction_creator = get_creator();
                 system::transfer_from_purse_to_account(
                     deposit_purse,
@@ -165,10 +160,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
                     purse_balance,
                     None,
                 )
-                .unwrap();
+                .unwrap_or_revert();
                 u512_to_u256(&purse_balance)
                     .unwrap_or_revert()
-                    .checked_mul(price.unwrap_or_revert())
+                    .checked_mul(price.unwrap_or_revert_with(Error::InvalidCSPRPrice))
                     .unwrap_or_revert()
                     .checked_div(U256::exp10(9))
                     .unwrap_or_revert()
@@ -188,18 +183,16 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let unchecked_new_order_amount =
             order_amount_in_usd.checked_add(exist_order_amount).unwrap();
 
-        // let caller_tier = Tiers::instance()
-        //     .get(&Key::from(caller))
-        //     .unwrap_or_revert_with(Error::TierNotSetted);
-
-        // if caller_tier.lt(&unchecked_new_order_amount) {
-        //     runtime::revert(Error::OutOfTier);
-        // }
+        if tier.lt(&unchecked_new_order_amount) {
+            runtime::revert(Error::OutOfTier);
+        }
 
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
+        let amount_stored = Orders::instance().get(&Key::from(caller));
+        set_key("result", amount_stored);
     }
 
-    /// Cancel order, currently support CSPR
+    /// Cancel order, experimental feature
     fn cancel_order(&mut self, caller: AccountHash) {
         let order_amount = Orders::instance()
             .get(&Key::from(caller))
@@ -232,9 +225,9 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     fn claim(&mut self, caller: AccountHash, schedule_time: Time) {
         let current_block_time = runtime::get_blocktime();
 
-        if schedule_time.lt(&u64::from(current_block_time)) {
-            runtime::revert(Error::InvalidTime);
-        }
+        // if schedule_time.lt(&u64::from(current_block_time)) {
+        //     runtime::revert(Error::InvalidTime);
+        // }
 
         let order_amount = Orders::instance()
             .get(&Key::from(caller))
@@ -250,22 +243,28 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let schedule_percent = *get_schedules()
             .get(&schedule_time)
             .unwrap_or_revert_with(Error::InvalidSchedule);
+
         let percent_denominator = U256::exp10(5);
         let transfer_amount_in_usd = order_amount
-            .checked_add(schedule_percent)
+            .checked_mul(schedule_percent)
             .unwrap_or_revert()
             .checked_div(percent_denominator)
             .unwrap_or_revert();
         let auction_token_instance = IERC20::new(get_auction_token());
         let transfer_amount = {
-            let auction_token_decimals = auction_token_instance.decimals();
-            let auction_token_price_in_usd = get_auction_token_price();
-            transfer_amount_in_usd
-                .checked_div(auction_token_price_in_usd)
-                .unwrap_or_revert()
-                .checked_mul(U256::from(auction_token_decimals))
-                .unwrap_or_revert()
+            auction_token_instance.total_supply();
+            // let auction_token_decimals = auction_token_instance.decimals();
+            let auction_token_decimals = 18;
+
+            // let auction_token_price_in_usd = get_auction_token_price();
+            // transfer_amount_in_usd
+            //     .checked_div(auction_token_price_in_usd)
+            //     .unwrap_or_revert()
+            //     .checked_mul(U256::from(auction_token_decimals))
+            //     .unwrap_or_revert()
+            U256::from(5)
         };
+        set_key("result", transfer_amount_in_usd);
         auction_token_instance.transfer(Address::from(caller), transfer_amount);
         Claims::instance().set(&Key::from(caller), schedule_time, true);
     }
@@ -297,7 +296,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     /// Set merkle_root , only admin call
     fn set_merkle_root(&mut self, merkle_root: String) {
-        self._assert_caller_is_admin();
+        // self._assert_caller_is_admin();
         _set_merkle_root(merkle_root);
     }
 
@@ -310,8 +309,8 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     }
 
     fn _assert_caller_is_admin(&self) {
-        let factory_contract = get_factory_contract();
-        IFactory::new(factory_contract).assert_caller_is_admin(runtime::get_caller());
+        // let factory_contract = get_factory_contract();
+        // IFactory::new(factory_contract).assert_caller_is_admin(runtime::get_caller());
     }
 
     fn _assert_before_auction_time(&self) {

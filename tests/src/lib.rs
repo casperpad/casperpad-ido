@@ -1,3 +1,4 @@
+#![feature(map_first_last)]
 #[cfg(test)]
 pub mod casper_ido_instance;
 

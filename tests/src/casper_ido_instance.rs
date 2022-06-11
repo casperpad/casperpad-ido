@@ -6,8 +6,9 @@ use casper_ido_contract::{
 };
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, ContractHash,
-    ContractPackageHash, RuntimeArgs, U256,
+    ContractPackageHash, Key, RuntimeArgs, U256,
 };
+use contract_utils::key_to_str;
 use test_env::{TestContract, TestEnv};
 
 pub struct CasperIdoInstance(TestContract);
@@ -57,31 +58,33 @@ impl CasperIdoInstance {
     }
 
     /// Admin must set cspr price before auction start
-    pub fn set_cspr_price(&self, sender: AccountHash, price: U256) {
-        self.0.call_contract(
+    pub fn set_cspr_price(&self, sender: AccountHash, price: U256, time: SystemTime) {
+        self.0.call_contract_with_time(
             sender,
             "set_cspr_price",
             runtime_args! {
                 "price" => price
             },
+            time,
         );
     }
 
     /// Admin must set auction token before first schedule
-    pub fn set_auction_token(&self, sender: AccountHash, auction_token: String) {
-        self.0.call_contract(
+    pub fn set_auction_token(&self, sender: AccountHash, auction_token: String, time: SystemTime) {
+        self.0.call_contract_with_time(
             sender,
             "set_auction_token",
             runtime_args! {
                 "auction_token" => auction_token
             },
+            time,
         );
     }
 
     pub fn set_merkle_root(&self, sender: AccountHash, merkle_root: String) {
         self.0.call_contract(
             sender,
-            "set_cspr_price",
+            "set_merkle_root",
             runtime_args! {
                 "merkle_root" => merkle_root
             },
@@ -121,6 +124,16 @@ impl CasperIdoInstance {
             },
             time,
         )
+    }
+
+    pub fn schedules(&self) -> Schedules {
+        self.0.query_named_key("schedules".to_string())
+    }
+
+    /// Actually not working????
+    pub fn get_order(&self, sender: AccountHash) -> Option<U256> {
+        self.0
+            .query_dictionary("orders", key_to_str(&Key::from(sender)))
     }
 
     pub fn result<T: CLTyped + FromBytes>(&self) -> T {

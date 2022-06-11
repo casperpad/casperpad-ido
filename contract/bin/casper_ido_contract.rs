@@ -161,7 +161,7 @@ pub extern "C" fn set_cspr_price() {
 #[no_mangle]
 pub extern "C" fn set_auction_token() {
     let auction_token: ContractHash = {
-        let auction_token_str: String = runtime::get_named_arg("price");
+        let auction_token_str: String = runtime::get_named_arg("auction_token");
         ContractHash::from_formatted_str(&auction_token_str).unwrap()
     };
     CasperIdoContract::default().set_auction_token(auction_token);
@@ -308,6 +308,13 @@ fn get_entry_points() -> EntryPoints {
         EntryPointType::Contract,
     ));
 
+    entry_points.add_entry_point(EntryPoint::new(
+        "set_auction_token",
+        vec![Parameter::new("auction_token".to_string(), CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
     entry_points.add_entry_point(EntryPoint::new(
         "set_cspr_price",
         vec![Parameter::new("price".to_string(), CLType::U256)],

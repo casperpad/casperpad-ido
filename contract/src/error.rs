@@ -32,6 +32,7 @@ pub enum Error {
     NotExistOrder = 53,
     InvalidSchedule = 54,
     InvalidPayToken = 55,
+    InvalidMerkleRoot = 56,
 
     // Contract Error
     InvalidContext = 90,
