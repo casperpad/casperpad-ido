@@ -104,6 +104,7 @@ pub extern "C" fn set_treasury_wallet() {
 
 #[no_mangle]
 pub extern "C" fn add_auction() {
+    FactoryContract::default().assert_caller_is_admin();
     let auction: ContractHash = {
         let auction_string: String = runtime::get_named_arg("auction");
         ContractHash::from_formatted_str(&auction_string).unwrap()

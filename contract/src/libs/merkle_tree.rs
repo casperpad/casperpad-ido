@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 //! Implementation of merkle_tree.
-use core::convert::TryInto;
 
 use alloc::string::String;
 
 use alloc::vec::Vec;
 
 use casper_contract::contract_api::runtime;
-use casper_contract::{contract_api::storage, unwrap_or_revert::UnwrapOrRevert};
 
-use casper_types::{ApiError, Key, URef};
+use casper_types::ApiError;
 use tiny_keccak::Hasher;
 
 const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
@@ -30,29 +28,8 @@ impl Position {
     }
 }
 
-#[inline]
-pub(crate) fn merkle_tree_root_uref() -> URef {
-    let key = runtime::get_key(MERKLE_ROOT_KEY_NAME).unwrap_or({
-        let key: Key = storage::new_uref("").into();
-        runtime::put_key(MERKLE_ROOT_KEY_NAME, key);
-        key
-    });
-
-    key.try_into().unwrap_or_revert()
-}
-
-/// Reads a merkle_tree from a specified [`URef`].
-pub(crate) fn read_merkle_tree_root_from(uref: URef) -> String {
-    storage::read(uref).unwrap_or_revert().unwrap_or_revert()
-}
-
-/// Writes a merkle_tree to a specific [`URef`].
-pub(crate) fn write_merkle_tree_root_to(uref: URef, value: String) {
-    storage::write(uref, value);
-}
-
 /// Verify leaf is in the tree
-pub(crate) fn verify(root: Option<String>, leaf: String, proof: Vec<(String, u8)>) {
+pub fn verify(root: String, leaf: String, proof: Vec<(String, u8)>) {
     let converted_proof: Vec<(Vec<u8>, Position)> = proof
         .iter()
         .map(|proof| {
@@ -92,18 +69,7 @@ pub(crate) fn verify(root: Option<String>, leaf: String, proof: Vec<(String, u8)
 
     let computed_root = hex::encode(*computed_hash);
 
-    let root_to_check = match root {
-        Some(root) => root,
-        _ => {
-            let uref = merkle_tree_root_uref();
-            read_merkle_tree_root_from(uref)
-        }
-    };
-    if !computed_root.eq(&root_to_check) {
+    if !computed_root.eq(&root) {
         runtime::revert(ApiError::PermissionDenied);
     }
-}
-
-pub(crate) fn init() {
-    let _ = merkle_tree_root_uref();
 }

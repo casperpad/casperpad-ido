@@ -17,9 +17,6 @@ pub type Claims = BTreeMap<(AccountHash, Time), bool>;
 
 pub type Schedules = BTreeMap<Time, U256>;
 
-/// tier amount unit is USD
-pub type Tiers = BTreeMap<AccountHash, U256>;
-
 #[derive(Debug, Clone)]
 pub struct Auction {
     pub id: String,
@@ -38,7 +35,6 @@ pub struct Auction {
     pub claims: Claims,
     pub schedules: Schedules,
     pub merkle_root: Option<String>, // if None use default merkle_root
-    pub tiers: Tiers,
 }
 
 impl CLTyped for Auction {
@@ -66,7 +62,7 @@ impl ToBytes for Auction {
         buffer.extend(self.claims.to_bytes()?);
         buffer.extend(self.schedules.to_bytes()?);
         buffer.extend(self.merkle_root.to_bytes()?);
-        buffer.extend(self.tiers.to_bytes()?);
+
         Ok(buffer)
     }
 
@@ -87,7 +83,6 @@ impl ToBytes for Auction {
             + self.claims.serialized_length()
             + self.schedules.serialized_length()
             + self.merkle_root.serialized_length()
-            + self.tiers.serialized_length()
     }
 }
 
@@ -109,7 +104,7 @@ impl FromBytes for Auction {
         let (claims, bytes) = Claims::from_bytes(bytes)?;
         let (schedules, bytes) = Schedules::from_bytes(bytes)?;
         let (merkle_root, bytes) = Option::<String>::from_bytes(bytes)?;
-        let (tiers, bytes) = Tiers::from_bytes(bytes)?;
+
         Ok((
             Self {
                 id,
@@ -128,7 +123,6 @@ impl FromBytes for Auction {
                 claims,
                 schedules,
                 merkle_root,
-                tiers,
             },
             bytes,
         ))

@@ -1,6 +1,7 @@
 import { sleep } from "casper-js-client-helper/dist/helpers/utils";
 import {
   CasperClient,
+  CLPublicKey,
   Keys
 } from "casper-js-sdk";
 import * as fs from "fs";
@@ -23,15 +24,15 @@ interface AccountInfo {
 /**
  * Returns on-chain account information.
  * @param {Object} client - JS SDK client for interacting with a node.
- * @param {String} stateRootHash - Root hash of global state at a recent block.
- * @param {Object} keyPair - Assymmetric keys of an on-chain account.
+ * @param {Object} publicKey - Assymmetric keys of an on-chain account.
  * @return {Object} On-chain account information.
  */
-export const getAccountInfo = async (client: CasperClient, stateRootHash: string, keyPair: Keys.AsymmetricKey): Promise<AccountInfo> => {
-  const accountHash = getAccountHash(keyPair);
+export const getAccountInfo = async (client: CasperClient, publicKey: CLPublicKey): Promise<AccountInfo> => {
+  const accountHash = publicKey.toAccountHashStr();
+  const stateRootHash = await client.nodeClient.getStateRootHash();
   const { Account: accountInfo } = await client.nodeClient.getBlockState(
     stateRootHash,
-    `account-hash-${accountHash}`,
+    accountHash,
     []
   );
 
@@ -41,19 +42,17 @@ export const getAccountInfo = async (client: CasperClient, stateRootHash: string
 /**
  * Returns a value under an on-chain account's storage.
  * @param {CasperClient} client - JS SDK client for interacting with a node.
- * @param {String} stateRootHash - Root hash of global state at a recent block.
  * @param {Object} keyPair - Assymmetric keys of an on-chain account.
  * @param {String} namedKey - A named key associated with an on-chain account.
  * @return {String} On-chain account storage item value.
  */
 export const getAccountNamedKeyValue = async (
   client: CasperClient,
-  stateRootHash: string,
-  keyPair: Keys.AsymmetricKey,
+  publicKey: CLPublicKey,
   namedKey: string
 ): Promise<string> => {
   // Chain query: get account information.
-  const accountInfo = await getAccountInfo(client, stateRootHash, keyPair);
+  const accountInfo = await getAccountInfo(client, publicKey);
   // console.log("accountInfo:", accountInfo);
   // Get value of contract v1 named key.
   const { key: contractHash } = _.find(accountInfo.namedKeys, (i) => {
@@ -114,9 +113,3 @@ export const getDeploy = async (NODE_URL: string, deployHash: string) => {
 };
 
 
-interface Argv {
-  reamin: string[],
-  cooked: string[],
-  original: string[]
-};
-export const argv: Argv = JSON.parse(process.env.npm_config_argv || "");

@@ -71,36 +71,6 @@ impl Claims {
     }
 }
 
-pub const TIERS_DIC: &str = "tiers";
-
-pub struct Tiers {
-    dict: Dict,
-}
-
-impl Tiers {
-    pub fn instance() -> Tiers {
-        Tiers {
-            dict: Dict::instance(TIERS_DIC),
-        }
-    }
-
-    pub fn init() {
-        Dict::init(TIERS_DIC)
-    }
-
-    pub fn get(&self, account: &Key) -> Option<U256> {
-        self.dict.get(&key_to_str(account))
-    }
-
-    pub fn set(&self, account: &Key, value: U256) {
-        self.dict.set(&key_to_str(account), value);
-    }
-
-    pub fn remove(&self, key: &Key) {
-        self.dict.remove::<U256>(&key_to_str(key));
-    }
-}
-
 const INFO: &str = "info";
 
 pub fn set_info(info: &str) {
@@ -119,6 +89,16 @@ pub fn set_creator(creator: AccountHash) {
 
 pub fn get_creator() -> AccountHash {
     get_key(CREATOR).unwrap_or_revert()
+}
+
+const MERKLE_ROOT: &str = "merkle_root";
+
+pub fn _set_merkle_root(root: String) {
+    set_key(MERKLE_ROOT, root);
+}
+
+pub fn _get_merkle_root() -> String {
+    get_key(MERKLE_ROOT).unwrap_or_revert()
 }
 
 const AUCTION_START_TIME: &str = "auction_start_time";

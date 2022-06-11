@@ -1,3 +1,3 @@
 mod auction;
 
-pub use auction::{Auction, Claims, Orders, Schedules, Tiers, Time};
+pub use auction::{Auction, Claims, Orders, Schedules, Time};

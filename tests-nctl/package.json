@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:nctl": "TS_NODE_FILES=true mocha -r ts-node/register scripts/**/*.test.ts --timeout 5000000",
     "merkletree": "ts-node ./scripts/merkletree.ts",
-    "install-contract": "ts-node ./scripts/install-contract.ts",
+    "install-contracts": "ts-node ./scripts/install-contracts.ts",
     "deploy": "ts-node ./scripts/deploy.ts"
   },
   "keywords": [
@@ -17,15 +18,21 @@
   "author": "gyroflaw",
   "license": "ISC",
   "dependencies": {
+    "casper-erc20-js-client": "^0.2.0",
     "casper-js-client-helper": "^1.0.1",
     "casper-js-sdk": "^2.9.1",
+    "chai": "^4.3.6",
+    "dotenv": "^16.0.1",
     "keccak256": "^1.0.6",
     "lodash": "^4.17.21",
     "merkletreejs": "^0.2.31",
     "ts-node": "^10.8.0"
   },
   "devDependencies": {
+    "@types/chai": "^4.3.1",
     "@types/lodash": "^4.14.182",
+    "@types/mocha": "^9.1.1",
+    "mocha": "^10.0.0",
     "typescript": "^4.7.2"
   }
 }

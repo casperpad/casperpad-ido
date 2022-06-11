@@ -1,6 +1,8 @@
+use std::time::SystemTime;
+
 use casper_ido_contract::{
-    enums::{Address, BiddingToken},
-    structs::{Auction, Schedules, Tiers, Time},
+    enums::BiddingToken,
+    structs::{Schedules, Time},
 };
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, ContractHash,
@@ -54,6 +56,7 @@ impl CasperIdoInstance {
         self.0.contract_hash()
     }
 
+    /// Admin must set cspr price before auction start
     pub fn set_cspr_price(&self, sender: AccountHash, price: U256) {
         self.0.call_contract(
             sender,
@@ -64,10 +67,31 @@ impl CasperIdoInstance {
         );
     }
 
+    /// Admin must set auction token before first schedule
+    pub fn set_auction_token(&self, sender: AccountHash, auction_token: String) {
+        self.0.call_contract(
+            sender,
+            "set_auction_token",
+            runtime_args! {
+                "auction_token" => auction_token
+            },
+        );
+    }
+
+    pub fn set_merkle_root(&self, sender: AccountHash, merkle_root: String) {
+        self.0.call_contract(
+            sender,
+            "set_cspr_price",
+            runtime_args! {
+                "merkle_root" => merkle_root
+            },
+        );
+    }
+
     pub fn create_order(
         &self,
         sender: AccountHash,
-        auction_id: &str,
+        tier: U256,
         proof: Vec<(String, u8)>,
         token: String,
         amount: U256,
@@ -76,18 +100,30 @@ impl CasperIdoInstance {
             sender,
             "set_cspr_price",
             runtime_args! {
-            "auction_id" => auction_id,
+            "tier" => tier,
             "proof" => proof,
             "token" => token,
             "amount" => amount},
         );
     }
 
-    pub fn result<T: CLTyped + FromBytes>(&self) -> T {
-        self.0.query_named_key("result".to_string())
+    pub fn cancel_order(&self, sender: AccountHash) {
+        self.0
+            .call_contract(sender, "cancel_order", runtime_args! {})
     }
 
-    pub fn result2<T: CLTyped + FromBytes>(&self) -> T {
-        self.0.query_named_key("result2".to_string())
+    pub fn claim(&self, sender: AccountHash, schedule_time: u64, time: SystemTime) {
+        self.0.call_contract_with_time(
+            sender,
+            "claim",
+            runtime_args! {
+                "schedule_time" => schedule_time
+            },
+            time,
+        )
+    }
+
+    pub fn result<T: CLTyped + FromBytes>(&self) -> T {
+        self.0.query_named_key("result".to_string())
     }
 }

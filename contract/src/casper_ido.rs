@@ -1,18 +1,25 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use casper_contract::{
     contract_api::{runtime, system},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{account::AccountHash, ApiError, ContractHash, Key, URef, U256};
-use contract_utils::{set_key, ContractContext, ContractStorage};
+use casper_types::{
+    account::AccountHash, ApiError, ContractHash, ContractPackageHash, Key, URef, U256,
+};
+use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
     data::{
-        get_auction_end_time, get_auction_start_time, get_auction_token, get_auction_token_price,
-        get_bidding_token, get_creator, get_factory_contract, get_schedules, set_auction_end_time,
+        set_creator, set_factory_contract, set_info, set_launch_time, set_schedules, Claims,
+        Orders, _get_merkle_root, _set_merkle_root, get_auction_end_time, get_auction_start_time,
+        get_auction_token, get_auction_token_capacity, get_auction_token_price, get_bidding_token,
+        get_creator, get_factory_contract, get_schedules, set_auction_end_time,
         set_auction_start_time, set_auction_token, set_auction_token_capacity,
-        set_auction_token_price, set_bidding_token, set_creator, set_factory_contract, set_info,
-        set_launch_time, set_schedules, Claims, Orders, Tiers,
+        set_auction_token_price, set_bidding_token,
     },
     enums::{Address, BiddingToken},
     event::{self, CasperIdoEvent},
@@ -42,8 +49,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_auction_end_time(auction_end_time);
         set_launch_time(launch_time);
         if auction_token.is_some() {
-            let name = IERC20::new(auction_token.unwrap()).name();
-            set_key("result", name);
             set_auction_token(auction_token.unwrap());
         }
         set_auction_token_price(auction_token_price);
@@ -54,31 +59,40 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
         Orders::init();
         Claims::init();
-        Tiers::init();
-        // let treasury = IFactory::new(factory_contract).get_treasury_wallet();
-        // set_key("result2", treasury);
-        // IFactory::new(factory_contract).add_auction(self.contract_hash());
     }
 
-    fn contract_package_hash(&self) {}
-
-    fn contract_hash(&self) -> ContractHash {
+    fn contract_package_hash(&self) -> ContractPackageHash {
         let hash_addr = self.self_addr().into_hash().unwrap();
-        ContractHash::from(hash_addr)
+        ContractPackageHash::from(hash_addr)
+    }
+
+    fn set_auction_token(&mut self, auction_token: ContractHash) {
+        self._assert_caller_is_admin();
+        let auction_creator = get_creator();
+        if auction_creator != runtime::get_caller() {
+            runtime::revert(ApiError::PermissionDenied);
+        }
+        self._assert_before_auction_time();
+        IERC20::new(auction_token).transfer_from(
+            Address::from(auction_creator),
+            Address::from(self.contract_package_hash()),
+            self.auction_token_capacity(),
+        );
+        set_auction_token(auction_token);
     }
 
     /// Create order, caller must be whitelisted and can creat in sale time.
     fn create_order(
         &mut self,
         caller: AccountHash,
+        tier: U256,
         proof: Vec<(String, u8)>,
         token: ContractHash,
         amount: U256,
     ) {
         // Check caller is whitelisted
-        // let leaf = caller.to_string();
-        // let merkle_root = merkle_tree::
-        // merkle_tree::verify(auction.merkle_root.clone(), leaf, proof);
+        let leaf = format!("{}_{:?}", caller.to_string(), tier);
+        merkle_tree::verify(self.get_merkle_root(), leaf, proof);
 
         // Check current time is between sale time
         self._assert_auction_time();
@@ -112,13 +126,13 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let unchecked_new_order_amount =
             order_amount_in_usd.checked_add(exist_order_amount).unwrap();
 
-        let caller_tier = Tiers::instance()
-            .get(&Key::from(caller))
-            .unwrap_or_revert_with(Error::TierNotSetted);
+        // let caller_tier = Tiers::instance()
+        //     .get(&Key::from(caller))
+        //     .unwrap_or_revert_with(Error::TierNotSetted);
 
-        if caller_tier.lt(&unchecked_new_order_amount) {
-            runtime::revert(Error::OutOfTier);
-        }
+        // if caller_tier.lt(&unchecked_new_order_amount) {
+        //     runtime::revert(Error::OutOfTier);
+        // }
 
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
@@ -126,12 +140,13 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     fn create_order_cspr(
         &mut self,
         caller: AccountHash,
+        tier: U256,
         proof: Vec<(String, u8)>,
         deposit_purse: URef,
     ) {
         // Check caller is whitelisted
-        // let leaf = caller.to_string();
-        // merkle_tree::verify(auction.merkle_root.clone(), leaf, proof);
+        let leaf = format!("{}_{:?}", caller.to_string(), tier);
+        merkle_tree::verify(self.get_merkle_root(), leaf, proof);
 
         // Check current time is between sale time
         // TODO Check
@@ -173,13 +188,13 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let unchecked_new_order_amount =
             order_amount_in_usd.checked_add(exist_order_amount).unwrap();
 
-        let caller_tier = Tiers::instance()
-            .get(&Key::from(caller))
-            .unwrap_or_revert_with(Error::TierNotSetted);
+        // let caller_tier = Tiers::instance()
+        //     .get(&Key::from(caller))
+        //     .unwrap_or_revert_with(Error::TierNotSetted);
 
-        if caller_tier.lt(&unchecked_new_order_amount) {
-            runtime::revert(Error::OutOfTier);
-        }
+        // if caller_tier.lt(&unchecked_new_order_amount) {
+        //     runtime::revert(Error::OutOfTier);
+        // }
 
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
@@ -257,14 +272,15 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     /// Set CSPR price for given auction, if ERC20 token is used for payment abort, should set to only admin call
     fn set_cspr_price(&mut self, price: U256) {
-        let factory_contract = get_factory_contract();
-        IFactory::new(factory_contract).assert_caller_is_admin(runtime::get_caller());
+        self._assert_caller_is_admin();
+
+        // Can set CSPR price before sale time
+        self._assert_before_auction_time();
+
         let auction_creator = get_creator();
         if auction_creator != runtime::get_caller() {
             runtime::revert(ApiError::PermissionDenied);
         }
-        // Can set CSPR price before sale time
-        self._assert_before_auction_time();
 
         let mut bidding_token = get_bidding_token();
 
@@ -279,17 +295,23 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_bidding_token(bidding_token);
     }
 
-    fn set_tiers(&mut self, tiers: &mut BTreeMap<AccountHash, U256>) {
-        let factory_contract = get_factory_contract();
-        IFactory::new(factory_contract).assert_caller_is_admin(runtime::get_caller());
+    /// Set merkle_root , only admin call
+    fn set_merkle_root(&mut self, merkle_root: String) {
+        self._assert_caller_is_admin();
+        _set_merkle_root(merkle_root);
     }
 
-    /// Set merkle_root for given aution, should set to only admin call
-    fn set_merkle_root(&mut self, merkle_root: String) {
+    fn get_merkle_root(&self) -> String {
+        _get_merkle_root()
+    }
+
+    fn auction_token_capacity(&self) -> U256 {
+        get_auction_token_capacity()
+    }
+
+    fn _assert_caller_is_admin(&self) {
         let factory_contract = get_factory_contract();
         IFactory::new(factory_contract).assert_caller_is_admin(runtime::get_caller());
-        // auction.merkle_root = Some(merkle_root);
-        // Auctions::instance().set(&auction_id, auction);
     }
 
     fn _assert_before_auction_time(&self) {

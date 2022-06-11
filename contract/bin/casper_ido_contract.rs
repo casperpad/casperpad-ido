@@ -11,7 +11,7 @@ extern crate alloc;
 
 use alloc::{
     boxed::Box,
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeSet,
     format,
     string::{String, ToString},
     vec,
@@ -23,16 +23,15 @@ use casper_contract::{
 };
 use casper_ido_contract::{
     enums::{Address, BiddingToken},
-    structs::{Schedules, Tiers, Time},
+    structs::{Schedules, Time},
     CasperIdo, IFactory,
 };
 
 use casper_types::{
-    account::AccountHash, runtime_args, CLType, CLTyped, ContractHash, ContractPackageHash,
-    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Parameter, RuntimeArgs, URef,
-    U256,
+    runtime_args, CLType, CLTyped, ContractHash, ContractPackageHash, EntryPoint, EntryPointAccess,
+    EntryPointType, EntryPoints, Group, Parameter, RuntimeArgs, URef, U256,
 };
-use contract_utils::{set_key, ContractContext, OnChainContractStorage, ReentrancyGuard};
+use contract_utils::{ContractContext, OnChainContractStorage, ReentrancyGuard};
 
 #[derive(Default)]
 struct CasperIdoContract(OnChainContractStorage);
@@ -110,56 +109,28 @@ pub extern "C" fn constructor() {
         bidding_token,
         schedules,
     );
-    // IFactory::new(factory_contract).add_auction(CasperIdoContract::default().contract_hash());
-}
-
-#[no_mangle]
-pub extern "C" fn create_auction() {
-
-    // let id: String = runtime::get_named_arg("id");
-
-    // let auction_token_instance = IERC20::new(auction_token);
-
-    // // // Send Fee to treasury wallet
-    // let fee_denominator = CasperIdoContract::default().get_fee_denominator();
-    // let fee_amount = auction_token_capacity
-    //     .checked_mul(U256::from(fee_numerator))
-    //     .unwrap_or_revert()
-    //     .checked_div(fee_denominator)
-    //     .unwrap_or_revert();
-    // let treasury_wallet = CasperIdoContract::default().get_treasury_wallet();
-    // auction_token_instance.transfer_from(Address::from(creator), treasury_wallet, fee_amount);
-
-    // // Set auction_token_capacity - fee_amount to new auction_token_capacity
-    // let contract_package_hash = address_utils::get_caller_address().unwrap_or_revert();
-    // let auction_token_capacity = auction_token_capacity
-    //     .checked_sub(fee_amount)
-    //     .unwrap_or_revert();
-    // auction_token_instance.transfer_from(
-    //     Address::from(creator),
-    //     contract_package_hash,
-    //     auction_token_capacity,
-    // );
 }
 
 #[no_mangle]
 pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
+    let tier: U256 = runtime::get_named_arg("tier");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let token: ContractHash = {
         let token_contract_string: String = runtime::get_named_arg("token");
         ContractHash::from_formatted_str(&token_contract_string).unwrap()
     };
     let amount: U256 = runtime::get_named_arg("amount");
-    CasperIdoContract::default().create_order(caller, proof, token, amount);
+    CasperIdoContract::default().create_order(caller, tier, proof, token, amount);
 }
 
 #[no_mangle]
 pub extern "C" fn create_order_cspr() {
     let caller = runtime::get_caller();
+    let tier: U256 = runtime::get_named_arg("tier");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
-    CasperIdoContract::default().create_order_cspr(caller, proof, deposit_purse);
+    CasperIdoContract::default().create_order_cspr(caller, tier, proof, deposit_purse);
 }
 
 #[no_mangle]
@@ -184,14 +155,16 @@ pub extern "C" fn claim() {
 #[no_mangle]
 pub extern "C" fn set_cspr_price() {
     let price: U256 = runtime::get_named_arg("price");
-    // CasperIdoContract::default().set_cspr_price(price);
-    set_key("result", price);
+    CasperIdoContract::default().set_cspr_price(price);
 }
 
 #[no_mangle]
-pub extern "C" fn set_tiers() {
-    let mut tiers: BTreeMap<AccountHash, U256> = runtime::get_named_arg("tiers");
-    CasperIdoContract::default().set_tiers(&mut tiers);
+pub extern "C" fn set_auction_token() {
+    let auction_token: ContractHash = {
+        let auction_token_str: String = runtime::get_named_arg("price");
+        ContractHash::from_formatted_str(&auction_token_str).unwrap()
+    };
+    CasperIdoContract::default().set_auction_token(auction_token);
 }
 
 #[no_mangle]
@@ -237,7 +210,7 @@ pub extern "C" fn call() {
             .unwrap_or_revert();
 
     let constructor_args = runtime_args! {
-        "factory_contract" => factory_contract,
+        "factory_contract" => factory_contract.clone(),
         "info" => info,
         "auction_start_time" => auction_start_time,
         "auction_end_time" => auction_end_time,
@@ -263,6 +236,9 @@ pub extern "C" fn call() {
         &format!("{}_contract_hash_wrapped", contract_name),
         storage::new_uref(contract_hash).into(),
     );
+    // IMPORTANT!!!
+    // IFactory::new(ContractHash::from_formatted_str(&factory_contract).unwrap())
+    //     .add_auction(contract_hash);
 }
 
 fn get_entry_points() -> EntryPoints {
@@ -280,33 +256,9 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "create_auction",
-        vec![
-            Parameter::new("id".to_string(), CLType::String),
-            Parameter::new("info".to_string(), CLType::String),
-            Parameter::new("auction_start_time".to_string(), CLType::U64),
-            Parameter::new("auction_end_time".to_string(), CLType::U64),
-            Parameter::new("project_open_time".to_string(), CLType::U64),
-            Parameter::new("auction_token".to_string(), CLType::String),
-            Parameter::new("auction_token_price".to_string(), CLType::U256),
-            Parameter::new("bidding_token".to_string(), BiddingToken::cl_type()),
-            Parameter::new("fee_numerator".to_string(), CLType::U8),
-            Parameter::new("schedules".to_string(), Schedules::cl_type()),
-            Parameter::new(
-                "merkle_root".to_string(),
-                CLType::Option(Box::new(CLType::String)),
-            ),
-            Parameter::new("tiers".to_string(), Tiers::cl_type()),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
         "create_order",
         vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
+            Parameter::new("tier".to_string(), CLType::U256),
             Parameter::new(
                 "proof".to_string(),
                 CLType::List(Box::new(CLType::Tuple2([
@@ -325,7 +277,7 @@ fn get_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         "create_order_cspr",
         vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
+            Parameter::new("tier".to_string(), CLType::U256),
             Parameter::new(
                 "proof".to_string(),
                 CLType::List(Box::new(CLType::Tuple2([
@@ -342,7 +294,7 @@ fn get_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(EntryPoint::new(
         "cancel_order",
-        vec![Parameter::new("auction_id".to_string(), CLType::String)],
+        vec![],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -350,10 +302,7 @@ fn get_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(EntryPoint::new(
         "claim",
-        vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
-            Parameter::new("schedule_time".to_string(), CLType::U64),
-        ],
+        vec![Parameter::new("schedule_time".to_string(), CLType::U64)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -368,22 +317,8 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "set_tiers",
-        vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
-            Parameter::new("tiers".to_string(), Tiers::cl_type()),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
         "set_merkle_root",
-        vec![
-            Parameter::new("auction_id".to_string(), CLType::String),
-            Parameter::new("merkle_root".to_string(), CLType::String),
-        ],
+        vec![Parameter::new("merkle_root".to_string(), CLType::String)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

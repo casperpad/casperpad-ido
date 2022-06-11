@@ -1,11 +1,6 @@
 import {
-  DeployUtil,
-  CasperClient,
-  RuntimeArgs,
-  CLByteArray,
-  CLPublicKey,
-  CLAccountHash,
-  CLKey
+  encodeBase16,
+  Keys
 } from "casper-js-sdk";
 
 import { MerkleTree } from "merkletreejs";
@@ -45,6 +40,18 @@ function logProof(proof: Proof) {
   console.log(proof.position, proof.data.toString('hex'));
 }
 
+function test_env_users(): string[] {
+  const accountHashes = new Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9).map(secret => {
+    const userSecret = new Uint8Array(new Array(32).fill(secret));
+    const privateKey = Keys.Ed25519.parsePrivateKey(userSecret);
+    const publicKey = Keys.Ed25519.privateToPublicKey(privateKey);
+    console.log(encodeBase16(publicKey))
+    const accountKey = Keys.Ed25519.parseKeyPair(publicKey, privateKey);
+    return encodeBase16(accountKey.publicKey.toAccountHash());
+  })
+  return accountHashes;
+}
+
 export const genMerkleTree = () => {
   const leaves = [
     "f4668ecfd97223a9e9087b573eef139cb0b5adc513dfb3e8c248e802c571ed4b",
@@ -74,4 +81,6 @@ export const genMerkleTree = () => {
 
 }
 
-genMerkleTree();
+// genMerkleTree();
+
+console.log(test_env_users());
