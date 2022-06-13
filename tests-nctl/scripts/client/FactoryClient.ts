@@ -110,6 +110,14 @@ export default class FactoryClient extends CasperContractClient {
     );
   }
 
+  public async installTime() {
+    return await contractSimpleGetter(
+      this.nodeAddress,
+      this.contractHash!,
+      ["install_time"]
+    );
+  }
+
 
   /**
    * Returns the feeDenominator. 

@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 config();
+// config({ path: '.env.development.local' });
 import {
   CasperClient
 } from "casper-js-sdk";
