@@ -1,4 +1,7 @@
 #![feature(map_first_last)]
+
+extern crate alloc;
+
 #[cfg(test)]
 pub mod casper_ido_instance;
 

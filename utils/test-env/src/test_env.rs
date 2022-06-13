@@ -3,7 +3,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use casper_engine_test_support::{InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST};
+use casper_engine_test_support::{
+    ExecuteRequestBuilder, InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST,
+};
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, CLTyped, Key, PublicKey, RuntimeArgs, SecretKey,
 };
@@ -20,6 +22,17 @@ impl TestEnv {
         TestEnv {
             state: Arc::new(Mutex::new(TestEnvState::new())),
         }
+    }
+
+    pub fn depoy_contract(&self, sender: AccountHash, wasm: &str, session_args: RuntimeArgs) {
+        let depoy_request = ExecuteRequestBuilder::standard(sender, wasm, session_args).build();
+        self.state
+            .lock()
+            .unwrap()
+            .builder
+            .exec(depoy_request)
+            .expect_success()
+            .commit();
     }
 
     pub fn run(&self, sender: AccountHash, session_code: DeploySource, session_args: RuntimeArgs) {

@@ -11,7 +11,7 @@ extern crate alloc;
 
 use alloc::{
     boxed::Box,
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     format,
     string::{String, ToString},
     vec,
@@ -134,11 +134,10 @@ pub extern "C" fn create_order_cspr() {
 }
 
 #[no_mangle]
-pub extern "C" fn cancel_order() {
-    let caller = runtime::get_caller();
-
+pub extern "C" fn add_orders() {
+    let orders: BTreeMap<String, U256> = runtime::get_named_arg("orders");
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().cancel_order(caller);
+    CasperIdoContract::default().add_orders(orders);
     CasperIdoContract::default().clear_reentrancy();
 }
 
@@ -237,8 +236,11 @@ pub extern "C" fn call() {
         storage::new_uref(contract_hash).into(),
     );
     // IMPORTANT!!!
-    // IFactory::new(ContractHash::from_formatted_str(&factory_contract).unwrap())
-    //     .add_auction(contract_hash);
+    IFactory::new(ContractHash::from_formatted_str(&factory_contract).unwrap()).add_auction(
+        contract_hash,
+        auction_start_time,
+        auction_end_time,
+    );
 }
 
 fn get_entry_points() -> EntryPoints {
@@ -293,8 +295,14 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "cancel_order",
-        vec![],
+        "add_orders",
+        vec![Parameter::new(
+            "orders".to_string(),
+            CLType::Map {
+                key: Box::new(CLType::String),
+                value: Box::new(CLType::U256),
+            },
+        )],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::SystemTime};
+use std::time::SystemTime;
 
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, CLTyped, ContractHash, ContractPackageHash,
@@ -21,10 +21,8 @@ impl TestContract {
         sender: AccountHash,
         mut args: RuntimeArgs,
     ) -> TestContract {
-        let session_code = PathBuf::from(wasm);
         args.insert("contract_name", name).unwrap();
-        env.run(sender, DeploySource::Code(session_code), args);
-
+        env.depoy_contract(sender, wasm, args);
         TestContract {
             env: env.clone(),
             name: String::from(name),

@@ -17,7 +17,7 @@ use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_ido_contract::Factory;
+use casper_ido_contract::{structs::Time, Factory};
 use casper_types::{
     account::AccountHash, runtime_args, ApiError, CLType, ContractHash, ContractPackageHash,
     EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs,
@@ -59,7 +59,7 @@ pub extern "C" fn constructor() {
     let default_admin = runtime::get_caller();
 
     FactoryContract::default().add_admin_without_checked(Key::from(default_admin));
-    set_key("result", treasury_wallet);
+    set_key("install_time", u64::from(runtime::get_blocktime()));
 }
 
 #[no_mangle]
@@ -98,19 +98,23 @@ pub extern "C" fn set_fee_denominator() {
 #[no_mangle]
 pub extern "C" fn set_treasury_wallet() {
     FactoryContract::default().assert_caller_is_admin();
-    let treasury_wallet: AccountHash = runtime::get_named_arg("treasury_wallet");
+    let treasury_wallet: AccountHash = {
+        let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
+        AccountHash::from_formatted_str(&treasury_wallet).unwrap()
+    };
     FactoryContract::default().set_treasury_wallet(treasury_wallet);
 }
 
 #[no_mangle]
 pub extern "C" fn add_auction() {
     FactoryContract::default().assert_caller_is_admin();
-    let auction: ContractHash = {
-        let auction_string: String = runtime::get_named_arg("auction");
-        ContractHash::from_formatted_str(&auction_string).unwrap()
+    let auction_contract: ContractHash = {
+        let auction_contract_string: String = runtime::get_named_arg("auction_contract");
+        ContractHash::from_formatted_str(&auction_contract_string).unwrap()
     };
-    FactoryContract::default().add_auction(auction);
-    set_key("result", runtime::get_caller());
+    let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
+    let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
+    FactoryContract::default().add_auction(auction_contract, auction_start_time, auction_end_time);
 }
 
 #[no_mangle]

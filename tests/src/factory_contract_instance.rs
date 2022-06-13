@@ -1,4 +1,4 @@
-use casper_ido_contract::enums::Address;
+use casper_ido_contract::structs::Time;
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, ContractHash,
     ContractPackageHash, RuntimeArgs, U256,
@@ -63,14 +63,26 @@ impl FactoryContractInstance {
         self.0.query_named_key("fee_denominator".to_string())
     }
 
-    pub fn add_auction(&self, sender: AccountHash, auction: String) {
+    pub fn add_auction(
+        &self,
+        sender: AccountHash,
+        auction_contract: String,
+        auction_start_time: Time,
+        auction_end_time: Time,
+    ) {
         self.0.call_contract(
             sender,
             "add_auction",
             runtime_args! {
-                "auction" => auction,
+                "auction_contract" => auction_contract,
+                "auction_start_time" => auction_start_time,
+                "auction_end_time" => auction_end_time,
             },
         )
+    }
+
+    pub fn auctions(&self) -> Vec<(ContractHash, u64, u64)> {
+        self.0.query_named_key("auctions".to_string())
     }
 
     pub fn result<T: CLTyped + FromBytes>(&self) -> T {

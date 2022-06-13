@@ -3,19 +3,20 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use alloc::collections::BTreeMap;
+
 use casper_ido_contract::{
     enums::{Address, BiddingToken},
     structs::{Schedules, Time},
 };
 use casper_types::{
-    account::AccountHash, runtime_args, ContractHash, PublicKey, RuntimeArgs, SecretKey, U256, U512,
+    account::AccountHash, runtime_args, PublicKey, RuntimeArgs, SecretKey, U256, U512,
 };
 use test_env::{utils::DeploySource, TestEnv};
 
 use crate::{
-    casper_ido_instance::CasperIdoInstance,
-    erc20_instance::ERC20Instance,
-    factory_contract_instance::{self, FactoryContractInstance},
+    casper_ido_instance::CasperIdoInstance, erc20_instance::ERC20Instance,
+    factory_contract_instance::FactoryContractInstance,
 };
 
 const PRE_CREATE_ORDER_WASM: &str = "pre_create_order.wasm";
@@ -58,7 +59,7 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
     let launch_time = Time::from(since_the_epoch + 1000000);
 
     let auction_token = Some(erc20_instance.contract_hash().to_formatted_string());
-    let auction_token_price = U256::zero();
+    let auction_token_price = U256::from(1).checked_mul(U256::exp10(18 - 2)).unwrap();
     let auction_token_capacity = U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap();
 
     let mut schedules: Schedules = Schedules::new();
@@ -91,7 +92,7 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
     (env, test_context, owner)
 }
 
-fn whitlisted_users() -> Vec<AccountHash> {
+fn _whitlisted_users() -> Vec<AccountHash> {
     let mut accounts = Vec::new();
     for i in 0..10u8 {
         let secret_key: SecretKey = SecretKey::ed25519_from_bytes([i; 32]).unwrap();
@@ -127,35 +128,16 @@ fn get_proof() -> Vec<(String, u8)> {
 }
 
 #[test]
-fn test_factory_contract_deploy() {
-    let env = TestEnv::new();
-    let owner = env.next_user();
-    let ali = env.next_user();
-    let factory_contract_instance = FactoryContractInstance::new(
-        &env,
-        "ido_factory_contract",
-        owner,
-        ali.to_formatted_string(),
-        U256::exp10(4),
-    );
-    factory_contract_instance.add_auction(
-        owner,
-        factory_contract_instance
-            .contract_hash()
-            .to_formatted_string(),
-    );
-}
-
-#[test]
 fn test_deploy() {
     let _ = deploy();
 }
 
 #[test]
-fn should_create_order() {
+fn should_create_order_and_claim() {
     let (env, test_context, owner) = deploy();
     let ido_contract = test_context.casper_ido_instance;
 
+    // Set Auction token
     let erc20 = test_context.erc20_instance;
 
     erc20.approve(
@@ -172,14 +154,16 @@ fn should_create_order() {
             .unwrap(),
     );
 
+    // Set merkle root
     ido_contract.set_merkle_root(
         owner,
         "32f7f9803d8e88954435659db24d6fdaa94ba46165fa1ce076b03f232273b3a5".to_string(),
     );
 
+    // set cspr price
     ido_contract.set_cspr_price(
         owner,
-        U256::from(1).checked_mul(U256::exp10(18 - 2)).unwrap(),
+        U256::from(3).checked_mul(U256::exp10(18 - 2)).unwrap(),
         SystemTime::now()
             .checked_sub(Duration::from_secs(20000))
             .unwrap(),
@@ -207,7 +191,6 @@ fn should_create_order() {
 
     let mut auction_schedules = ido_contract.schedules();
 
-    println!("{:?}", auction_schedules);
     ido_contract.claim(
         user,
         *auction_schedules.first_entry().unwrap().key(),
@@ -215,13 +198,10 @@ fn should_create_order() {
             .checked_add(Duration::from_secs(7666660))
             .unwrap(),
     );
-    let result: U256 = ido_contract.result();
-    let balance = erc20.balance_of(Address::Account(user));
-    println!("{:?},{:?}", result, balance);
-    assert!(false);
+    // let result: U256 = ido_contract.result();
+    // let _ = erc20.balance_of(Address::Account(user));
 }
 
-#[ignore]
 #[test]
 fn should_set_treasury_wallet() {
     let (env, test_context, owner) = deploy();
@@ -230,4 +210,22 @@ fn should_set_treasury_wallet() {
     factory_contract.set_treasury_wallet(owner, treasury_wallet.to_formatted_string());
     let stored_treasury_wallet = factory_contract.get_treasury_wallet();
     assert_eq!(treasury_wallet, stored_treasury_wallet)
+}
+
+#[test]
+fn should_add_orders() {
+    let (env, test_context, owner) = deploy();
+    let ido_contract = test_context.casper_ido_instance;
+    let mut orders: BTreeMap<String, U256> = BTreeMap::new();
+    let ali = env.next_user();
+    let bob = env.next_user();
+    orders.insert(ali.to_formatted_string(), U256::one());
+    orders.insert(bob.to_formatted_string(), U256::one());
+    orders.insert(env.next_user().to_formatted_string(), U256::one());
+    orders.insert(env.next_user().to_formatted_string(), U256::one());
+    ido_contract.add_orders(owner, orders);
+    let result: U256 = ido_contract.result();
+    // let ali_order = ido_contract.get_order(ali);
+    println!("{:?}", result);
+    assert!(false);
 }

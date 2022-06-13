@@ -40,7 +40,6 @@ impl Orders {
 }
 
 pub const CLAIMS_DICT: &str = "claims";
-
 pub struct Claims {
     dict: Dict,
 }
@@ -66,7 +65,7 @@ impl Claims {
             .set(&key_and_value_to_str(account, &schedule_time), claimed);
     }
 
-    pub fn remove(&self, account: &Key, schedule_time: Time) {
+    pub fn _remove(&self, account: &Key, schedule_time: Time) {
         self.dict
             .remove::<U256>(&key_and_value_to_str(account, &schedule_time));
     }
@@ -78,7 +77,7 @@ pub fn set_info(info: &str) {
     set_key(INFO, info);
 }
 
-pub fn get_info() -> String {
+pub fn _get_info() -> String {
     get_key(INFO).unwrap_or_revert()
 }
 
@@ -128,7 +127,7 @@ pub fn set_launch_time(time: Time) {
     set_key(LAUNCH_TIME, time);
 }
 
-pub fn get_launch_time() -> Time {
+pub fn _get_launch_time() -> Time {
     get_key(LAUNCH_TIME).unwrap_or_revert()
 }
 
@@ -188,8 +187,28 @@ pub fn set_factory_contract(contract_hash: ContractHash) {
     set_key(FACTORY_CONTRACT, contract_hash);
 }
 
-pub fn get_factory_contract() -> ContractHash {
+pub fn _get_factory_contract() -> ContractHash {
     get_key(FACTORY_CONTRACT).unwrap_or_revert()
+}
+
+const TOTAL_PARTICIPANTS: &str = "total_participants";
+
+pub fn _set_total_participants(participants: u64) {
+    set_key(TOTAL_PARTICIPANTS, participants);
+}
+
+pub fn _get_total_participants() -> u64 {
+    get_key(TOTAL_PARTICIPANTS).unwrap_or_revert()
+}
+
+const SOLD_AMOUNT: &str = "sold_amount";
+
+pub fn _set_sold_amount(amount: U256) {
+    set_key(SOLD_AMOUNT, amount);
+}
+
+pub fn _get_sold_amount() -> U256 {
+    get_key(SOLD_AMOUNT).unwrap_or_revert()
 }
 
 // FACTORY CONTRACT
@@ -215,10 +234,10 @@ pub fn _get_treasury_wallet() -> AccountHash {
 
 const AUCTIONS: &str = "auctions";
 
-pub fn _set_auctions(auctions: Vec<ContractHash>) {
+pub fn _set_auctions(auctions: Vec<(ContractHash, Time, Time)>) {
     set_key(AUCTIONS, auctions);
 }
 
-pub fn _get_auctions() -> Vec<ContractHash> {
+pub fn _get_auctions() -> Vec<(ContractHash, Time, Time)> {
     get_key(AUCTIONS).unwrap_or_default()
 }

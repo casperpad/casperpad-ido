@@ -1,5 +1,7 @@
 use std::time::SystemTime;
 
+use alloc::collections::BTreeMap;
+
 use casper_ido_contract::{
     enums::BiddingToken,
     structs::{Schedules, Time},
@@ -81,6 +83,16 @@ impl CasperIdoInstance {
         );
     }
 
+    pub fn add_orders(&self, sender: AccountHash, orders: BTreeMap<String, U256>) {
+        self.0.call_contract(
+            sender,
+            "add_orders",
+            runtime_args! {
+                "orders" => orders
+            },
+        );
+    }
+
     pub fn set_merkle_root(&self, sender: AccountHash, merkle_root: String) {
         self.0.call_contract(
             sender,
@@ -131,9 +143,10 @@ impl CasperIdoInstance {
     }
 
     /// Actually not working????
-    pub fn get_order(&self, sender: AccountHash) -> Option<U256> {
+    pub fn get_order(&self, sender: AccountHash) -> U256 {
         self.0
             .query_dictionary("orders", key_to_str(&Key::from(sender)))
+            .unwrap_or_default()
     }
 
     pub fn result<T: CLTyped + FromBytes>(&self) -> T {

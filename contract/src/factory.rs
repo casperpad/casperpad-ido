@@ -1,9 +1,12 @@
 use casper_types::{account::AccountHash, ContractHash, U256};
 use contract_utils::{ContractContext, ContractStorage};
 
-use crate::data::{
-    _get_auctions, _get_fee_denominator, _get_treasury_wallet, _set_auctions, _set_fee_denominator,
-    _set_treasury_wallet,
+use crate::{
+    data::{
+        _get_auctions, _get_fee_denominator, _get_treasury_wallet, _set_auctions,
+        _set_fee_denominator, _set_treasury_wallet,
+    },
+    structs::Time,
 };
 
 pub trait Factory<Storage: ContractStorage>: ContractContext<Storage> {
@@ -29,9 +32,9 @@ pub trait Factory<Storage: ContractStorage>: ContractContext<Storage> {
         _get_treasury_wallet()
     }
 
-    fn add_auction(&mut self, auction: ContractHash) {
+    fn add_auction(&mut self, auction_contract: ContractHash, start_time: Time, end_time: Time) {
         let mut auctions = _get_auctions();
-        auctions.push(auction);
+        auctions.push((auction_contract, start_time, end_time));
         _set_auctions(auctions);
     }
 }
