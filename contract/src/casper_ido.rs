@@ -230,10 +230,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     /// Whitelisted user can claim after schedule time
     fn claim(&mut self, caller: AccountHash, schedule_time: Time) {
         // Can claim after schedule
-        // let current_block_time = runtime::get_blocktime();
-        // if !schedule_time.lt(&u64::from(current_block_time)) {
-        //     runtime::revert(Error::InvalidTime);
-        // }
+        let current_block_time = runtime::get_blocktime();
+        if !schedule_time.lt(&u64::from(current_block_time)) {
+            runtime::revert(Error::InvalidTime);
+        }
 
         let order_amount = Orders::instance()
             .get(&Key::from(caller))
@@ -363,18 +363,18 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     fn _assert_before_auction_time(&self) {
         let time = Time::from(runtime::get_blocktime());
         let auction_start_time = get_auction_start_time();
-        // if time.gt(&auction_start_time) {
-        //     runtime::revert(Error::InvalidTime);
-        // }
+        if time.gt(&auction_start_time) {
+            runtime::revert(Error::InvalidTime);
+        }
     }
 
     fn _assert_auction_time(&self) {
         let time = Time::from(runtime::get_blocktime());
         let auction_start_time = get_auction_start_time();
         let auction_end_time = get_auction_end_time();
-        // if !(time.gt(&auction_start_time) && time.lt(&auction_end_time)) {
-        //     runtime::revert(Error::InvalidTime);
-        // }
+        if !(time.gt(&auction_start_time) && time.lt(&auction_end_time)) {
+            runtime::revert(Error::InvalidTime);
+        }
     }
 
     fn emit(&mut self, event: CasperIdoEvent) {
