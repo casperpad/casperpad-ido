@@ -1,10 +1,7 @@
 use alloc::string::String;
 use casper_types::{account::AccountHash, ContractHash, U256};
 
-use crate::{
-    enums::BiddingToken,
-    structs::{Schedules, Time},
-};
+use crate::structs::{Schedules, Time};
 
 pub enum CasperIdoEvent {
     AuctionCreated {
@@ -18,7 +15,6 @@ pub enum CasperIdoEvent {
         auction_token: ContractHash,
         auction_token_price: U256,
         auction_token_capacity: U256,
-        bidding_token: BiddingToken,
         schedules: Schedules,
     },
 }

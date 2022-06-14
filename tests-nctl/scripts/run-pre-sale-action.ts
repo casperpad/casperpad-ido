@@ -1,6 +1,6 @@
 import { config } from "dotenv";
-config();
-// config({ path: '.env.development.local' });
+// config();
+config({ path: '.env.development.local' });
 import {
   CasperClient,
   CLValueBuilder,
@@ -34,9 +34,7 @@ const test = async () => {
     EVENT_STREAM_ADDRESS!
   );
   const casperClient = new CasperClient(NODE_ADDRESS!);
-  let accountInfo = await getAccountInfo(casperClient, KEYS.publicKey);
-
-  console.log(accountInfo);
+  // let accountInfo = await getAccountInfo(casperClient, KEYS.publicKey);
 
   const idoContractHash = await getAccountNamedKeyValue(casperClient,
     KEYS.publicKey,
@@ -73,9 +71,6 @@ const test = async () => {
   await getDeploy(NODE_ADDRESS!, deployHash);
   console.log("Approved to contract.");
 
-  // const blockInfo = await casperClient.nodeClient.getLatestBlockInfo();
-  // console.log(blockInfo);
-  // if (true) return;
   deployHash = await idoContract.setAuctionToken(
     KEYS,
     `contract-${erc20ContractHash.slice(5)}`,
@@ -88,21 +83,12 @@ const test = async () => {
 
   deployHash = await idoContract.setMerkleRoot(
     KEYS,
-    "8e25c006164fd89cc2360c4f7ddb1f245caa4202be43090a31dc20642909b286",
+    "3a532c2b32f0dcc3ceee4b37ae2e7374677621b848e10f30b6cb3953ee45516d",
     DEFAULT_RUN_ENTRYPOINT_PAYMENT
   );
   console.log(`setMerkleRoot deploy hash: ${deployHash}`);
   await getDeploy(NODE_ADDRESS!, deployHash);
   console.log("setMerkleRoot done");
-
-  deployHash = await idoContract.setCSPRPrice(
-    KEYS,
-    "500000000",
-    DEFAULT_RUN_ENTRYPOINT_PAYMENT
-  );
-  console.log(`setCSPRPrice deploy hash: ${deployHash}`);
-  await getDeploy(NODE_ADDRESS!, deployHash);
-  console.log("setCSPRPrice done");
 
   console.log(`... Run successfully.`);
 };

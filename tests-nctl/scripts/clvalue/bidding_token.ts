@@ -6,7 +6,10 @@ enum BiddingTokenVariant {
   Native,
   ERC20s
 }
-
+/**
+ * User cusotimzed CLType
+ * @deprecated
+ */
 export class CLBiddingTokenType extends CLType {
   tag = CLTypeTag.Any;
   linksTo = CLBiddingToken;

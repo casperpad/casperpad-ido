@@ -1,19 +1,15 @@
 import {
-  CasperClient,
   CLMap,
   CLStringType,
   CLU256,
   CLU64,
   CLValueBuilder,
   Keys,
-  RuntimeArgs,
-  Contracts, CasperServiceByJsonRPC, decodeBase16, CLAccountHash
+  RuntimeArgs, decodeBase16, CLAccountHash, CLString
 } from "casper-js-sdk";
 import { CasperContractClient, helpers, constants, utils } from "casper-js-client-helper";
 import { BigNumberish } from '@ethersproject/bignumber';
 import { Ok, Err, Some, None } from 'ts-results';
-import { BiddingToken, CLBiddingToken, CLBiddingTokenBytesParser, CLBiddingTokenType } from "../clvalue";
-import { CustomizedCasperServiceByJsonRPC } from "../jsonrpc";
 import { keyAndValueToHex } from "./utlis";
 
 const {
@@ -26,7 +22,6 @@ const {
   createRecipientAddress
 } = helpers;
 
-const { Contract } = Contracts;
 
 const { DEFAULT_TTL } = constants;
 
@@ -72,10 +67,10 @@ export default class IDOClient extends CasperContractClient {
     launchTime: number,
     auctionTokenPrice: BigNumberish,
     auctionTokenCapacity: BigNumberish,
-    biddingToken: BiddingToken,
     schedules: Map<number, BigNumberish>,
     paymentAmount: string,
     wasmPath: string,
+    payToken?: string,
     auctionToken?: string,
   ) {
     if (schedules.size === 0) {
@@ -94,7 +89,7 @@ export default class IDOClient extends CasperContractClient {
       launch_time: CLValueBuilder.u64(launchTime),
       auction_token_price: CLValueBuilder.u256(auctionTokenPrice),
       auction_token_capacity: CLValueBuilder.u256(auctionTokenCapacity),
-      bidding_token: CLValueBuilder.byteArray(new CLBiddingTokenBytesParser().toBytes(new CLBiddingToken(biddingToken)).unwrap()),
+      pay_token: payToken ? CLValueBuilder.option(Some(CLValueBuilder.string(payToken))) : CLValueBuilder.option(None, new CLStringType()),
       auction_token: auctionToken ? CLValueBuilder.option(Some(CLValueBuilder.string(auctionToken))) : CLValueBuilder.option(None, new CLStringType()),
       schedules: clMap,
     });
@@ -110,7 +105,7 @@ export default class IDOClient extends CasperContractClient {
   }
 
   /**
-   * Set ERC20 contract hash so its possible to communicate with it.
+   * Set contract hash so its possible to communicate with it.
    *
    * @param hash Contract hash (raw hex string as well as `hash-` prefixed format is supported).
    */
@@ -124,7 +119,7 @@ export default class IDOClient extends CasperContractClient {
         "auction_start_time",
         "auction_token_capacity",
         "auction_token_price",
-        "bidding_token",
+        "pay_token",
         "claims",
         "creator",
         "factory_contract",
@@ -159,30 +154,42 @@ export default class IDOClient extends CasperContractClient {
     return result;
   }
 
-  public async claim_of(account: string, time: number) {
+  public async result() {
+    return await contractSimpleGetter(
+      this.nodeAddress,
+      this.contractHash!,
+      ["result"]
+    );
+  }
+
+  public async schedules(): Promise<[BigNumberish, BigNumberish][]> {
+    const result: [CLU64, CLU256][] = await this.queryContract("schedules");
+    return result.map(schedule => {
+      return [schedule[0].data.toNumber(), schedule[1].data.toNumber()] as [BigNumberish, BigNumberish]
+    }
+    );
+  }
+
+  public async payToken(): Promise<Some<CLString>> {
+    return await this.queryContract("pay_token");
+  }
+
+  public async claimOf(account: string, time: number) {
     const clAccount = CLValueBuilder.key(new CLAccountHash(decodeBase16(account)));
     const clTime = CLValueBuilder.u64(time);
     const key = keyAndValueToHex(clAccount, clTime);
-    return await this.queryContractDictionary("claims", key);
+    try {
+      return await this.queryContractDictionary("claims", key);
+    } catch (error: any) {
+      return undefined;
+    }
   }
 
-  public async biddingToken(): Promise<BiddingToken> {
-
-    const casperClient = new CasperClient(this.nodeAddress);
-    const stateRootHashToUse = await casperClient.nodeClient.getStateRootHash();
-
-    const customizedJsonRPC = new CustomizedCasperServiceByJsonRPC(this.nodeAddress);
-
-    const result = await customizedJsonRPC.getBlockState1(stateRootHashToUse,
-      `hash-${this.contractHash!}`,
-      ["bidding_token"]);
-
-    const contractData = new CLBiddingTokenBytesParser().fromBytes(decodeBase16(result.bytes), new CLBiddingTokenType()).unwrap();
-
-    if (contractData && contractData.isCLValue) {
-      return contractData.value();
-    } else {
-      throw Error('Invalid stored value');
+  public async orderOf(account: string): Promise<Some<CLU256> | undefined> {
+    try {
+      return await this.queryContractDictionary("orders", account);
+    } catch (error: any) {
+      return undefined;
     }
   }
 
@@ -197,24 +204,6 @@ export default class IDOClient extends CasperContractClient {
 
     return await this.contractCall({
       entryPoint: "set_merkle_root",
-      keys,
-      paymentAmount,
-      runtimeArgs,
-      ttl,
-    });
-  }
-
-  public async setCSPRPrice(
-    keys: Keys.AsymmetricKey,
-    price: BigNumberish,
-    paymentAmount: string,
-    ttl = DEFAULT_TTL,) {
-    const runtimeArgs = RuntimeArgs.fromMap({
-      price: CLValueBuilder.u256(price),
-    });
-
-    return await this.contractCall({
-      entryPoint: "set_cspr_price",
       keys,
       paymentAmount,
       runtimeArgs,

@@ -10,8 +10,6 @@ use casper_contract::contract_api::runtime;
 use casper_types::ApiError;
 use tiny_keccak::Hasher;
 
-const MERKLE_ROOT_KEY_NAME: &str = "merkle_root";
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Position {
     Left = 0,

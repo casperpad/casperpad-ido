@@ -4,7 +4,6 @@ use casper_types::{account::AccountHash, ContractHash, Key, U256};
 use contract_utils::{get_key, key_and_value_to_str, key_to_str, set_key, Dict};
 
 use crate::{
-    enums::BiddingToken,
     structs::{Schedules, Time},
     Error,
 };
@@ -32,10 +31,6 @@ impl Orders {
 
     pub fn set(&self, account: &Key, value: U256) {
         self.dict.set(&key_to_str(account), value);
-    }
-
-    pub fn remove(&self, key: &Key) {
-        self.dict.remove::<U256>(&key_to_str(key));
     }
 }
 
@@ -161,14 +156,14 @@ pub fn get_auction_token_capacity() -> U256 {
     get_key(AUCTION_TOKEN_CAPACITY).unwrap_or_revert()
 }
 
-const BIDDING_TOKEN: &str = "bidding_token";
+const PAY_TOKEN: &str = "pay_token";
 
-pub fn set_bidding_token(bidding_token: BiddingToken) {
-    set_key(BIDDING_TOKEN, bidding_token);
+pub fn set_pay_token(pay_token: Option<ContractHash>) {
+    set_key(PAY_TOKEN, pay_token);
 }
 
-pub fn get_bidding_token() -> BiddingToken {
-    get_key(BIDDING_TOKEN).unwrap_or_revert()
+pub fn get_pay_token() -> Option<ContractHash> {
+    get_key(PAY_TOKEN).unwrap_or_revert()
 }
 
 const SCHEDULES: &str = "schedules";

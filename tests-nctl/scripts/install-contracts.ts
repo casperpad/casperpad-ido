@@ -1,6 +1,6 @@
 import { config } from "dotenv";
-config();
-// config({ path: '.env.development.local' });
+// config();
+config({ path: '.env.development.local' });
 import {
   Keys,
   CasperClient,
@@ -10,8 +10,8 @@ import { BigNumberish } from '@ethersproject/bignumber';
 import FactoryClient from "./client/FactoryClient";
 import { getAccountInfo, getAccountNamedKeyValue, getDeploy } from "./utils";
 import IDOClient from "./client/IDOClient";
-import { BiddingToken } from "./clvalue";
 import { Info, Convert } from "./types";
+
 // Path to contract to be installed.
 const IDO_CONTRACT = "/home/master/workspace/casperpad-ido/target/wasm32-unknown-unknown/release/casper_ido_contract.wasm";
 const FACTORY_CONTRACT = "/home/master/workspace/casperpad-ido/target/wasm32-unknown-unknown/release/factory_contract.wasm";
@@ -105,6 +105,7 @@ const testERC20 = async () => {
 }
 
 const testIDO = async () => {
+  console.log("Deploying IDO Contract...");
   const IDOContract = new IDOClient(
     NODE_ADDRESS!,
     CHAIN_NAME!,
@@ -125,7 +126,7 @@ const testIDO = async () => {
       "name": "Test Swappery Token",
       "symbol": "tSWPR",
       "decimals": 9,
-      "price": 0.01
+      "price": 0.1
     },
     "links": {
       "logo": "https://avatars.githubusercontent.com/u/49560738?s=200&v=4",
@@ -138,20 +139,21 @@ const testIDO = async () => {
 
   const info = Convert.infoToJson(info2);
 
-  const auctionStartTime = Date.now() + 7200;
-  const auctionEndTime = Date.now() + 18000;
-  const launchTime = Date.now() + 432000;
+  const auctionStartTime = Date.now() + 1800 * 1000;
+  const auctionEndTime = Date.now() + 7200 * 1000;
+  const launchTime = Date.now() + 432000 * 1000;
 
-  const auctionToken = "contract-9965d53100f27b29b45ebd4ea70d0bb4fd3715a9df91bf9e85adbd96dda68869";
+  const auctionToken = undefined;
 
   const auctionTokenPrice = "100000000";
 
   const auctionTokenCapacity = "2000000000000";
 
-  const schedules = new Map<number, BigNumberish>([[Date.now(), 1250], [Date.now() + 20000, 8750]]);
-  const biddingToken: BiddingToken = { price: undefined };
+  const schedules = new Map<number, BigNumberish>([[Date.now(), 1250], [Date.now() + 9000 * 1000, 8750]]);
+  const payToken = undefined;
 
-  const installDeployHash = await IDOContract.install(KEYS,
+  const installDeployHash = await IDOContract.install(
+    KEYS,
     "casper_ido",
     factory_contract,
     info,
@@ -160,10 +162,12 @@ const testIDO = async () => {
     launchTime,
     auctionTokenPrice,
     auctionTokenCapacity,
-    biddingToken,
     schedules,
     INSTALL_PAYMENT_AMOUNT!,
-    IDO_CONTRACT);
+    IDO_CONTRACT,
+    payToken,
+    auctionToken
+  );
 
   console.log(`... Contract installation deployHash: ${installDeployHash}`);
 

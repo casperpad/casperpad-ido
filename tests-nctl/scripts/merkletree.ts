@@ -2,7 +2,6 @@ import {
   encodeBase16,
   Keys
 } from "casper-js-sdk";
-
 import { MerkleTree } from "merkletreejs";
 import keccak256 from 'keccak256';
 import { BigNumberish, BigNumber } from "@ethersproject/bignumber";
@@ -93,6 +92,10 @@ function test_net_tiers(): Tier[] {
     {
       account: '243598b8ac367f970dbc9b30c2dd866d85ab1a3902800adfb816eb3638d1bc1e',
       amount: '100000000000'
+    },
+    {
+      account: '87516c22bca9a14179ebbbe646c8f911153fe53626126c1ba24293517c2e04a2',
+      amount: '20000000000'
     }
   ]
 }
@@ -104,18 +107,21 @@ export const genMerkleTree = () => {
   const leaves = elements.map(keccak256);
   const tree = new MerkleTree(leaves, keccak256);
   const root = tree.getRoot() as Root;
-  const leaf = leaves[2];
+  const leaf = leaves[0];
   const proof = tree.getProof(leaf) as Proof[];
 
-  proof.forEach(logProof);
+  // proof.forEach(logProof);
 
   console.log("----");
   console.log(tree.toString());
   console.log("----");
 
-  const result = verify(root, leaf, proof);
-  assert(result);
+  let result = verify(root, leaf, proof);
+  // assert(result);
 
+  result = tree.verify(proof, leaf, root)
+
+  assert(result)
   return { root, proof };
 
 }

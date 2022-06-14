@@ -1,8 +1,9 @@
 import { config } from "dotenv";
-config();
-// config({ path: '.env.development.local' });
+// config();
+config({ path: '.env.development.local' });
 import {
   CasperClient,
+  CLAccountHash,
   CLValueBuilder,
   decodeBase16,
   Keys,
@@ -41,8 +42,16 @@ const test = async () => {
   );
 
   await idoContract.setContractHash(idoContractHash.slice(5));
-  const biddingToken = await idoContract.biddingToken();
-  console.log({ biddingToken });
+
+  const user = "243598b8ac367f970dbc9b30c2dd866d85ab1a3902800adfb816eb3638d1bc1e";
+
+  const shedules = await idoContract.schedules();
+
+  const payToken = await idoContract.payToken();
+  // const claim = await idoContract.claimOf(user);
+  const order = await idoContract.orderOf(user);
+
+  console.dir({ payToken, order }, { depth: null });
 };
 
 const testFactory = async () => {
@@ -63,6 +72,35 @@ const testFactory = async () => {
   console.log(installTime.toString());
 }
 
+const testERC20 = async () => {
+  const casperClient = new CasperClient(NODE_ADDRESS!);
+  const erc20 = new ERC20Client(
+    NODE_ADDRESS!,
+    CHAIN_NAME!,
+    EVENT_STREAM_ADDRESS!
+  );
+  const erc20ContractHash = await getAccountNamedKeyValue(casperClient,
+    KEYS.publicKey,
+    `Test Swappery Token_contract_hash`
+  );
+
+  await erc20.setContractHash(erc20ContractHash.slice(5));
+
+  const idoContractPackageHash = await getAccountNamedKeyValue(casperClient,
+    KEYS.publicKey,
+    `casper_ido_contract_package_hash`
+  );
+  try {
+    const contractBalance = await erc20.balanceOf(CLValueBuilder.byteArray(decodeBase16(idoContractPackageHash.slice(5))));
+    const accountBalance = await erc20.balanceOf(new CLAccountHash(decodeBase16("243598b8ac367f970dbc9b30c2dd866d85ab1a3902800adfb816eb3638d1bc1e")));
+    console.log({ contractBalance, accountBalance });
+  } catch (error: any) {
+    console.error(error);
+  }
+}
+
 test();
+
+testERC20();
 
 // testFactory();

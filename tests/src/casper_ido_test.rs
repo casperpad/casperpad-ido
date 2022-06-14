@@ -6,11 +6,11 @@ use std::{
 use alloc::collections::BTreeMap;
 
 use casper_ido_contract::{
-    enums::{Address, BiddingToken},
+    enums::Address,
     structs::{Schedules, Time},
 };
 use casper_types::{
-    account::AccountHash, runtime_args, PublicKey, RuntimeArgs, SecretKey, U256, U512,
+    account::AccountHash, runtime_args, ContractHash, PublicKey, RuntimeArgs, SecretKey, U256, U512,
 };
 use test_env::{utils::DeploySource, TestEnv};
 
@@ -36,8 +36,8 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
         "Test_Token",
         owner,
         "ACME",
-        18,
-        U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap(),
+        9,
+        U256::from(5000u32).checked_mul(U256::exp10(9)).unwrap(),
     );
 
     let factory_contract_instance = FactoryContractInstance::new(
@@ -58,14 +58,14 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
     let auction_end_time = Time::from(since_the_epoch + 500000);
     let launch_time = Time::from(since_the_epoch + 1000000);
 
-    let auction_token = Some(erc20_instance.contract_hash().to_formatted_string());
-    let auction_token_price = U256::from(1).checked_mul(U256::exp10(18 - 2)).unwrap();
-    let auction_token_capacity = U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap();
+    let auction_token: Option<String> = None;
+    let auction_token_price = U256::from(2).checked_mul(U256::exp10(9)).unwrap();
+    let auction_token_capacity = U256::from(5000u32).checked_mul(U256::exp10(9)).unwrap();
 
     let mut schedules: Schedules = Schedules::new();
-    schedules.insert(since_the_epoch + 666666, U256::from(1250));
-    schedules.insert(since_the_epoch + 777777, U256::from(8750));
-    let bidding_token: BiddingToken = BiddingToken::Native { price: None };
+    schedules.insert(since_the_epoch + 666666, U256::from(4000));
+    schedules.insert(since_the_epoch + 777777, U256::from(6000));
+    let pay_token: Option<ContractHash> = None;
     let casper_ido_instance = CasperIdoInstance::new(
         &env,
         factory_contract_instance
@@ -80,7 +80,7 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
         auction_token,
         auction_token_price,
         auction_token_capacity,
-        bidding_token,
+        pay_token,
         schedules,
     );
 
@@ -143,7 +143,7 @@ fn should_create_order_and_claim() {
     erc20.approve(
         owner,
         Address::from(ido_contract.contract_package_hash()),
-        U256::from(5000u32).checked_mul(U256::exp10(18)).unwrap(),
+        U256::from(5000u32).checked_mul(U256::exp10(9)).unwrap(),
     );
 
     ido_contract.set_auction_token(
@@ -158,15 +158,6 @@ fn should_create_order_and_claim() {
     ido_contract.set_merkle_root(
         owner,
         "32f7f9803d8e88954435659db24d6fdaa94ba46165fa1ce076b03f232273b3a5".to_string(),
-    );
-
-    // set cspr price
-    ido_contract.set_cspr_price(
-        owner,
-        U256::from(3).checked_mul(U256::exp10(18 - 2)).unwrap(),
-        SystemTime::now()
-            .checked_sub(Duration::from_secs(20000))
-            .unwrap(),
     );
 
     env.next_user();
@@ -198,8 +189,8 @@ fn should_create_order_and_claim() {
             .checked_add(Duration::from_secs(7666660))
             .unwrap(),
     );
-    // let result: U256 = ido_contract.result();
-    // let _ = erc20.balance_of(Address::Account(user));
+
+    let _ = erc20.balance_of(Address::Account(user)).unwrap();
 }
 
 #[test]
@@ -224,8 +215,4 @@ fn should_add_orders() {
     orders.insert(env.next_user().to_formatted_string(), U256::one());
     orders.insert(env.next_user().to_formatted_string(), U256::one());
     ido_contract.add_orders(owner, orders);
-    let result: U256 = ido_contract.result();
-    // let ali_order = ido_contract.get_order(ali);
-    println!("{:?}", result);
-    assert!(false);
 }

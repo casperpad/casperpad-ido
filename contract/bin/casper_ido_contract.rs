@@ -22,7 +22,7 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_ido_contract::{
-    enums::{Address, BiddingToken},
+    enums::Address,
     structs::{Schedules, Time},
     CasperIdo, IFactory,
 };
@@ -56,7 +56,7 @@ impl CasperIdoContract {
         auction_token: Option<ContractHash>,
         auction_token_price: U256,
         auction_token_capacity: U256,
-        bidding_token: BiddingToken,
+        pay_token: Option<ContractHash>,
         schedules: Schedules,
     ) {
         CasperIdo::init(
@@ -69,7 +69,7 @@ impl CasperIdoContract {
             auction_token,
             auction_token_price,
             auction_token_capacity,
-            bidding_token,
+            pay_token,
             schedules,
         );
         ReentrancyGuard::init(self);
@@ -89,12 +89,15 @@ pub extern "C" fn constructor() {
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
     let launch_time: Time = runtime::get_named_arg("launch_time");
     let auction_token = {
-        let auction_token_string: Option<String> = runtime::get_named_arg("auction_token");
-        auction_token_string.map(|str| ContractHash::from_formatted_str(&str).unwrap())
+        let auction_token_str: Option<String> = runtime::get_named_arg("auction_token");
+        auction_token_str.map(|str| ContractHash::from_formatted_str(&str).unwrap())
     };
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
     let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
-    let bidding_token: BiddingToken = runtime::get_named_arg("bidding_token");
+    let pay_token: Option<ContractHash> = {
+        let pay_token_str: Option<String> = runtime::get_named_arg("pay_token");
+        pay_token_str.map(|str| ContractHash::from_formatted_str(&str).unwrap())
+    };
     let schedules: Schedules = runtime::get_named_arg("schedules");
 
     CasperIdoContract::default().constructor(
@@ -106,7 +109,7 @@ pub extern "C" fn constructor() {
         auction_token,
         auction_token_price,
         auction_token_capacity,
-        bidding_token,
+        pay_token,
         schedules,
     );
 }
@@ -152,12 +155,6 @@ pub extern "C" fn claim() {
 }
 
 #[no_mangle]
-pub extern "C" fn set_cspr_price() {
-    let price: U256 = runtime::get_named_arg("price");
-    CasperIdoContract::default().set_cspr_price(price);
-}
-
-#[no_mangle]
 pub extern "C" fn set_auction_token() {
     let auction_token: ContractHash = {
         let auction_token_str: String = runtime::get_named_arg("auction_token");
@@ -183,7 +180,7 @@ pub extern "C" fn call() {
     let auction_token: Option<String> = runtime::get_named_arg("auction_token");
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
     let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
-    let bidding_token: BiddingToken = runtime::get_named_arg("bidding_token");
+    let pay_token: Option<String> = runtime::get_named_arg("pay_token");
     let schedules: Schedules = runtime::get_named_arg("schedules");
 
     let (contract_hash, _) = storage::new_contract(
@@ -217,7 +214,7 @@ pub extern "C" fn call() {
         "auction_token" => auction_token,
         "auction_token_price" => auction_token_price,
         "auction_token_capacity" => auction_token_capacity,
-        "bidding_token" => bidding_token,
+        "pay_token" => pay_token,
         "schedules" => schedules,
     };
     let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
@@ -319,13 +316,6 @@ fn get_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         "set_auction_token",
         vec![Parameter::new("auction_token".to_string(), CLType::String)],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-    entry_points.add_entry_point(EntryPoint::new(
-        "set_cspr_price",
-        vec![Parameter::new("price".to_string(), CLType::U256)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

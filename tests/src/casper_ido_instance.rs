@@ -2,10 +2,7 @@ use std::time::SystemTime;
 
 use alloc::collections::BTreeMap;
 
-use casper_ido_contract::{
-    enums::BiddingToken,
-    structs::{Schedules, Time},
-};
+use casper_ido_contract::structs::{Schedules, Time};
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, ContractHash,
     ContractPackageHash, Key, RuntimeArgs, U256,
@@ -28,7 +25,7 @@ impl CasperIdoInstance {
         auction_token: Option<String>,
         auction_token_price: U256,
         auction_token_capacity: U256,
-        bidding_token: BiddingToken,
+        pay_token: Option<ContractHash>,
         schedules: Schedules,
     ) -> CasperIdoInstance {
         CasperIdoInstance(TestContract::new(
@@ -45,7 +42,7 @@ impl CasperIdoInstance {
                 "auction_token" => auction_token,
                 "auction_token_price" => auction_token_price,
                 "auction_token_capacity" => auction_token_capacity,
-                "bidding_token" => bidding_token,
+                "pay_token" => pay_token,
                 "schedules" => schedules,
             },
         ))
@@ -57,18 +54,6 @@ impl CasperIdoInstance {
 
     pub fn contract_hash(&self) -> ContractHash {
         self.0.contract_hash()
-    }
-
-    /// Admin must set cspr price before auction start
-    pub fn set_cspr_price(&self, sender: AccountHash, price: U256, time: SystemTime) {
-        self.0.call_contract_with_time(
-            sender,
-            "set_cspr_price",
-            runtime_args! {
-                "price" => price
-            },
-            time,
-        );
     }
 
     /// Admin must set auction token before first schedule

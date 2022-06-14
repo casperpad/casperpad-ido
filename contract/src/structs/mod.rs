@@ -1,3 +1,6 @@
-mod auction;
+use alloc::collections::BTreeMap;
+use casper_types::U256;
 
-pub use auction::{Auction, Claims, Orders, Schedules, Time};
+pub type Time = u64;
+
+pub type Schedules = BTreeMap<Time, U256>;

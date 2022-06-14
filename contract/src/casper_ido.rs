@@ -18,11 +18,11 @@ use crate::{
         set_creator, set_factory_contract, set_info, set_launch_time, set_schedules, Claims,
         Orders, _get_merkle_root, _get_sold_amount, _get_total_participants, _set_merkle_root,
         _set_sold_amount, _set_total_participants, get_auction_end_time, get_auction_start_time,
-        get_auction_token, get_auction_token_capacity, get_auction_token_price, get_bidding_token,
-        get_creator, get_schedules, set_auction_end_time, set_auction_start_time,
-        set_auction_token, set_auction_token_capacity, set_auction_token_price, set_bidding_token,
+        get_auction_token, get_auction_token_capacity, get_auction_token_price, get_creator,
+        get_pay_token, get_schedules, set_auction_end_time, set_auction_start_time,
+        set_auction_token, set_auction_token_capacity, set_auction_token_price, set_pay_token,
     },
-    enums::{Address, BiddingToken},
+    enums::Address,
     event::{self, CasperIdoEvent},
     libs::{conversion::u512_to_u256, merkle_tree},
     structs::{Schedules, Time},
@@ -40,7 +40,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         auction_token: Option<ContractHash>,
         auction_token_price: U256,
         auction_token_capacity: U256,
-        bidding_token: BiddingToken,
+        pay_token: Option<ContractHash>,
         schedules: Schedules,
     ) {
         set_info(info);
@@ -50,10 +50,12 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_launch_time(launch_time);
         if auction_token.is_some() {
             set_auction_token(auction_token.unwrap());
+        } else {
+            set_auction_token(ContractHash::new([0u8; 32]));
         }
         set_auction_token_price(auction_token_price);
         set_auction_token_capacity(auction_token_capacity);
-        set_bidding_token(bidding_token);
+        set_pay_token(pay_token);
         set_schedules(schedules);
         set_factory_contract(factory_contract);
         _set_merkle_root("".to_string());
@@ -96,24 +98,20 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         // Check current time is between sale time
         self._assert_auction_time();
 
-        let bidding_token = get_bidding_token();
+        let pay_token = self.pay_token();
 
         // Check payment is right
-        let order_amount_in_usd = match bidding_token.clone() {
-            BiddingToken::Native { price: _ } => {
-                runtime::revert(Error::InvalidPayToken);
-            }
-            BiddingToken::ERC20s { tokens_with_price } => {
-                let paytoken_price = tokens_with_price
-                    .get(&token)
-                    .unwrap_or_revert_with(Error::InvalidPayToken);
-                let auction_creator = get_creator();
+        let order_amount = match pay_token {
+            Some(_) => {
                 IERC20::new(token).transfer_from(
                     Address::from(caller),
-                    Address::from(auction_creator),
+                    Address::from(self.creator()),
                     amount,
                 );
-                amount.checked_mul(*paytoken_price).unwrap_or_revert()
+                amount
+            }
+            None => {
+                runtime::revert(Error::InvalidPayToken);
             }
         };
 
@@ -122,17 +120,16 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             .get(&Key::from(caller))
             .unwrap_or(U256::zero());
 
-        let unchecked_new_order_amount =
-            order_amount_in_usd.checked_add(exist_order_amount).unwrap();
+        let unchecked_new_order_amount = order_amount.checked_add(exist_order_amount).unwrap();
 
         if tier.lt(&unchecked_new_order_amount) {
             runtime::revert(Error::OutOfTier);
         }
 
         if exist_order_amount.eq(&U256::zero()) {
-            self.increase_sold_amount_and_participants(order_amount_in_usd);
+            self.increase_sold_amount_and_participants(order_amount);
         } else {
-            self._increase_sold_amount(order_amount_in_usd);
+            self._increase_sold_amount(order_amount);
         }
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
@@ -151,11 +148,14 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         // Check current time is between auction time
         self._assert_auction_time();
 
-        let bidding_token = get_bidding_token();
+        let pay_token = self.pay_token();
 
         // Check payment is right
-        let order_amount_in_usd = match bidding_token.clone() {
-            BiddingToken::Native { price } => {
+        let order_amount = match pay_token {
+            Some(_) => {
+                runtime::revert(Error::InvalidPayToken);
+            }
+            None => {
                 let purse_balance = system::get_purse_balance(deposit_purse).unwrap_or_revert();
                 let auction_creator = get_creator();
                 system::transfer_from_purse_to_account(
@@ -165,17 +165,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
                     None,
                 )
                 .unwrap_or_revert();
-                u512_to_u256(&purse_balance)
-                    .unwrap_or_revert()
-                    .checked_mul(price.unwrap_or_revert_with(Error::InvalidCSPRPrice))
-                    .unwrap_or_revert()
-                    .checked_div(U256::exp10(9))
-                    .unwrap_or_revert()
-            }
-            BiddingToken::ERC20s {
-                tokens_with_price: _,
-            } => {
-                runtime::revert(Error::InvalidPayToken);
+                u512_to_u256(&purse_balance).unwrap_or_revert()
             }
         };
 
@@ -184,47 +174,17 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             .get(&Key::from(caller))
             .unwrap_or(U256::zero());
 
-        let unchecked_new_order_amount =
-            order_amount_in_usd.checked_add(exist_order_amount).unwrap();
+        let unchecked_new_order_amount = order_amount.checked_add(exist_order_amount).unwrap();
 
         if tier.lt(&unchecked_new_order_amount) {
             runtime::revert(Error::OutOfTier);
         }
         if exist_order_amount.eq(&U256::zero()) {
-            self.increase_sold_amount_and_participants(order_amount_in_usd);
+            self.increase_sold_amount_and_participants(order_amount);
         } else {
-            self._increase_sold_amount(order_amount_in_usd);
+            self._increase_sold_amount(order_amount);
         }
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
-    }
-
-    /// Cancel order, experimental feature
-    fn cancel_order(&mut self, caller: AccountHash) {
-        let _order_amount = Orders::instance()
-            .get(&Key::from(caller))
-            .unwrap_or_revert_with(Error::NotExistOrder);
-
-        let bidding_token = get_bidding_token();
-
-        match bidding_token {
-            BiddingToken::Native { price: _ } => {
-                // TODO REFUND
-                // let auction_purese = auction_purse(&auction_id);
-                // system::transfer_from_purse_to_account(
-                //     auction_purese,
-                //     runtime::get_caller(),
-                //     u256_to_512(order_amount).unwrap(),
-                //     None,
-                // )
-                // .unwrap();
-            }
-            BiddingToken::ERC20s {
-                tokens_with_price: _,
-            } => {
-                runtime::revert(Error::PermissionDenied);
-            }
-        }
-        Orders::instance().remove(&Key::from(caller));
     }
 
     /// Whitelisted user can claim after schedule time
@@ -246,51 +206,25 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             runtime::revert(Error::AlreadyClaimed);
         }
 
-        let schedule_percent = *get_schedules()
-            .get(&schedule_time)
-            .unwrap_or_revert_with(Error::InvalidSchedule);
-
-        let percent_denominator = U256::exp10(4);
-        let transfer_amount_in_usd = order_amount
-            .checked_mul(schedule_percent)
-            .unwrap_or_revert()
-            .checked_div(percent_denominator)
-            .unwrap_or_revert();
-        let auction_token_instance = IERC20::new(get_auction_token());
+        let auction_token_instance = IERC20::new(self.auction_token());
         let transfer_amount = {
-            auction_token_instance.total_supply();
+            let schedule_percent = *get_schedules()
+                .get(&schedule_time)
+                .unwrap_or_revert_with(Error::InvalidSchedule);
             let auction_token_decimals = auction_token_instance.decimals();
-
-            let auction_token_price_in_usd = get_auction_token_price();
-            transfer_amount_in_usd
+            let auction_token_price = get_auction_token_price();
+            order_amount
+                .checked_mul(schedule_percent)
+                .unwrap_or_revert()
+                .checked_div(U256::exp10(4))
+                .unwrap_or_revert()
                 .checked_mul(U256::exp10(auction_token_decimals.into()))
                 .unwrap_or_revert()
-                .checked_div(auction_token_price_in_usd)
+                .checked_div(auction_token_price)
                 .unwrap_or_revert()
         };
-        set_key("result", transfer_amount);
         auction_token_instance.transfer(Address::from(caller), transfer_amount);
         Claims::instance().set(&Key::from(caller), schedule_time, true);
-    }
-
-    /// Set CSPR price for given auction, if ERC20 token is used for payment abort, should set to only admin call
-    fn set_cspr_price(&mut self, price: U256) {
-        self._assert_caller_is_creator();
-
-        // Can set CSPR price before sale time
-        self._assert_before_auction_time();
-
-        let mut bidding_token = get_bidding_token();
-
-        match bidding_token {
-            BiddingToken::Native { price: _ } => {
-                bidding_token = BiddingToken::Native { price: Some(price) };
-            }
-            _ => {
-                runtime::revert(ApiError::InvalidArgument);
-            }
-        }
-        set_bidding_token(bidding_token);
     }
 
     /// Set merkle_root , only admin call
@@ -314,6 +248,22 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             Orders::instance().set(&Key::from(account), unchecked_new_order_amount);
             set_key("result", *user_order.1);
         });
+    }
+
+    fn pay_token(&self) -> Option<ContractHash> {
+        get_pay_token()
+    }
+
+    fn creator(&self) -> AccountHash {
+        get_creator()
+    }
+
+    fn auction_token(&self) -> ContractHash {
+        get_auction_token()
+    }
+
+    fn auction_token_price(&self) -> U256 {
+        get_auction_token_price()
     }
 
     fn merkle_root(&self) -> String {
