@@ -9,6 +9,7 @@
     "run-pre-sale-action": "ts-node ./scripts/run-pre-sale-action.ts",
     "install-contracts": "ts-node ./scripts/install-contracts.ts",
     "get-contract-values": "ts-node ./scripts/get-contract-values",
+    "convert-tier": "ts-node ./scripts/convert-tier",
     "deploy": "ts-node ./scripts/deploy.ts"
   },
   "keywords": [

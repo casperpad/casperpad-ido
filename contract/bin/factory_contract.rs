@@ -7,6 +7,8 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 
 extern crate alloc;
 
+use core::convert::TryInto;
+
 use alloc::{
     collections::BTreeSet,
     format,
@@ -118,6 +120,14 @@ pub extern "C" fn add_auction() {
 }
 
 #[no_mangle]
+pub extern "C" fn remove_auction() {
+    FactoryContract::default().assert_caller_is_admin();
+    let index: u32 = runtime::get_named_arg("index");
+    let index_u16: u16 = index.try_into().unwrap();
+    FactoryContract::default().remove_auction(usize::from(index_u16));
+}
+
+#[no_mangle]
 pub extern "C" fn call() {
     let contract_name: String = runtime::get_named_arg("contract_name");
     let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
@@ -218,6 +228,14 @@ fn get_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         "add_auction",
         vec![Parameter::new("auction".to_string(), CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "remove_auction",
+        vec![Parameter::new("index".to_string(), CLType::U32)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

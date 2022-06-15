@@ -81,6 +81,16 @@ impl FactoryContractInstance {
         )
     }
 
+    pub fn remove_auction(&self, sender: AccountHash, index: u32) {
+        self.0.call_contract(
+            sender,
+            "remove_auction",
+            runtime_args! {
+                "index" => index,
+            },
+        )
+    }
+
     pub fn auctions(&self) -> Vec<(ContractHash, u64, u64)> {
         self.0.query_named_key("auctions".to_string())
     }

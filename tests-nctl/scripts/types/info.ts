@@ -26,6 +26,7 @@ export interface Token {
   name: string;
   symbol: string;
   decimals: number;
+  capacity: string;
   price: number;
 }
 
@@ -191,6 +192,7 @@ const typeMap: any = {
     { json: "name", js: "name", typ: "" },
     { json: "symbol", js: "symbol", typ: "" },
     { json: "decimals", js: "decimals", typ: 0 },
+    { json: "capacity", js: "capacity", typ: "" },
     { json: "price", js: "price", typ: 3.14 },
   ], false),
 };

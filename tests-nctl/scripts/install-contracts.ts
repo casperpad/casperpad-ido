@@ -6,11 +6,12 @@ import {
   CasperClient,
 } from "casper-js-sdk";
 import { ERC20Client } from "casper-erc20-js-client";
-import { BigNumberish } from '@ethersproject/bignumber';
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import FactoryClient from "./client/FactoryClient";
 import { getAccountInfo, getAccountNamedKeyValue, getDeploy } from "./utils";
 import IDOClient from "./client/IDOClient";
 import { Info, Convert } from "./types";
+import testProjectCasper from "./tiers/test-project-casper.json";
 
 // Path to contract to be installed.
 const IDO_CONTRACT = "/home/master/workspace/casperpad-ido/target/wasm32-unknown-unknown/release/casper_ido_contract.wasm";
@@ -119,44 +120,33 @@ const testIDO = async () => {
   );
   const factory_contract = `contract-${factoryContractHash.slice(5)}`;
 
-  const info2: Info = {
-    "name": "The Swappery",
-    "description": "The Coolest DEX on Casper Network",
-    "token": {
-      "name": "Test Swappery Token",
-      "symbol": "tSWPR",
-      "decimals": 9,
-      "price": 0.1
-    },
-    "links": {
-      "logo": "https://avatars.githubusercontent.com/u/49560738?s=200&v=4",
-      "webpack": "https://",
-      "twitter": "",
-      "outline": "",
-      "telegram": ""
-    }
-  };
+  const info: Info = testProjectCasper.info;
 
-  const info = Convert.infoToJson(info2);
 
-  const auctionStartTime = Date.now() + 1800 * 1000;
-  const auctionEndTime = Date.now() + 7200 * 1000;
-  const launchTime = Date.now() + 432000 * 1000;
+  const auctionStartTime = Date.now() + 3600 * 1000;
+  const auctionEndTime = Date.now() + 36 * 3600 * 1000;
+  const launchTime = Date.now() + 3 * 24 * 3600 * 1000;
 
   const auctionToken = undefined;
 
-  const auctionTokenPrice = "100000000";
+  const auctionTokenPrice = info.token.price * 10 ** 9;
 
-  const auctionTokenCapacity = "2000000000000";
+  const auctionTokenCapacity = BigNumber.from(info.token.capacity).mul(10 ** (info.token.decimals));
 
-  const schedules = new Map<number, BigNumberish>([[Date.now(), 1250], [Date.now() + 9000 * 1000, 8750]]);
+  const schedules = new Map<number, BigNumberish>(
+    [
+      [auctionEndTime + 3600 * 1000, 1250],
+      [auctionEndTime + 7200 * 1000, 5000],
+      [auctionEndTime + 9000 * 1000, 3750]
+    ]
+  );
   const payToken = undefined;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
     "casper_ido",
     factory_contract,
-    info,
+    Convert.infoToJson(info),
     auctionStartTime,
     auctionEndTime,
     launchTime,
@@ -197,8 +187,8 @@ const test = async () => {
 
 // testERC20();
 
-testIDO();
+// testIDO();
 
 // testFactory();
 
-// test();
+test();

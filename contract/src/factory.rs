@@ -37,4 +37,10 @@ pub trait Factory<Storage: ContractStorage>: ContractContext<Storage> {
         auctions.push((auction_contract, start_time, end_time));
         _set_auctions(auctions);
     }
+
+    fn remove_auction(&mut self, index: usize) {
+        let mut auctions = _get_auctions();
+        auctions.remove(index);
+        _set_auctions(auctions);
+    }
 }

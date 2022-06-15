@@ -26,8 +26,7 @@ const KEYS = Keys.Ed25519.parseKeyPair(public_key, private_key);
 
 const DEFAULT_RUN_ENTRYPOINT_PAYMENT = "50000000000";
 
-const test = async () => {
-  console.log("Running pre-sale actions...");
+const setAuctionToken = async () => {
   const idoContract = new IDOClient(
     NODE_ADDRESS!,
     CHAIN_NAME!,
@@ -64,7 +63,7 @@ const test = async () => {
   let deployHash = await erc20.approve(
     KEYS,
     CLValueBuilder.byteArray(decodeBase16(idoContractPackageHash.slice(5))),
-    "5000000000000",
+    "1000000000000000",
     DEFAULT_RUN_ENTRYPOINT_PAYMENT
   );
   console.log(`ERC20 Approve deploy hash: ${deployHash}`);
@@ -81,9 +80,26 @@ const test = async () => {
   await getDeploy(NODE_ADDRESS!, deployHash);
   console.log("setAuctionToken done");
 
-  deployHash = await idoContract.setMerkleRoot(
+};
+
+const setMerkelRoot = async () => {
+  const idoContract = new IDOClient(
+    NODE_ADDRESS!,
+    CHAIN_NAME!,
+    EVENT_STREAM_ADDRESS!
+  );
+  const casperClient = new CasperClient(NODE_ADDRESS!);
+
+  const idoContractHash = await getAccountNamedKeyValue(casperClient,
+    KEYS.publicKey,
+    `casper_ido_contract_hash`
+  );
+
+  await idoContract.setContractHash(idoContractHash.slice(5));
+
+  const deployHash = await idoContract.setMerkleRoot(
     KEYS,
-    "3a532c2b32f0dcc3ceee4b37ae2e7374677621b848e10f30b6cb3953ee45516d",
+    "95ec4ac2a65d8711d48ad9fd42f3b157dc580b187608571fac48598fa108199e",
     DEFAULT_RUN_ENTRYPOINT_PAYMENT
   );
   console.log(`setMerkleRoot deploy hash: ${deployHash}`);
@@ -93,4 +109,9 @@ const test = async () => {
   console.log(`... Run successfully.`);
 };
 
-test();
+const runPresaleActions = async () => {
+  await setAuctionToken();
+  await setMerkelRoot();
+}
+
+setMerkelRoot();
