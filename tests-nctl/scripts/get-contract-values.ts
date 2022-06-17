@@ -43,10 +43,11 @@ const test = async () => {
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
-  const user = "243598b8ac367f970dbc9b30c2dd866d85ab1a3902800adfb816eb3638d1bc1e";
+
+
+  const user = "account-hash-f2af240a5aa234d6e295ff65b011126dc002f655b1034f869f38b7b2ba60e450";
 
   const shedules = await idoContract.schedules();
-
   const payToken = await idoContract.payToken();
   // const claim = await idoContract.claimOf(user);
   const order = await idoContract.orderOf(user);

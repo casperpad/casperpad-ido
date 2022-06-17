@@ -124,7 +124,9 @@ pub extern "C" fn create_order() {
         ContractHash::from_formatted_str(&token_contract_string).unwrap()
     };
     let amount: U256 = runtime::get_named_arg("amount");
+    CasperIdoContract::default().set_reentrancy();
     CasperIdoContract::default().create_order(caller, tier, proof, token, amount);
+    CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
@@ -133,7 +135,9 @@ pub extern "C" fn create_order_cspr() {
     let tier: U256 = runtime::get_named_arg("tier");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
+    CasperIdoContract::default().set_reentrancy();
     CasperIdoContract::default().create_order_cspr(caller, tier, proof, deposit_purse);
+    CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]

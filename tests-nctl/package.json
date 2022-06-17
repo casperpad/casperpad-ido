@@ -7,6 +7,7 @@
     "test:nctl": "TS_NODE_FILES=true mocha -r ts-node/register scripts/**/*.test.ts --timeout 5000000",
     "merkletree": "ts-node ./scripts/merkletree.ts",
     "run-pre-sale-action": "ts-node ./scripts/run-pre-sale-action.ts",
+    "run-after-sale-action": "ts-node ./scripts/run-after-sale-action.ts",
     "install-contracts": "ts-node ./scripts/install-contracts.ts",
     "get-contract-values": "ts-node ./scripts/get-contract-values",
     "convert-tier": "ts-node ./scripts/convert-tier",

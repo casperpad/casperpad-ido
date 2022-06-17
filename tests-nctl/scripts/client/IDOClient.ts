@@ -5,7 +5,7 @@ import {
   CLU64,
   CLValueBuilder,
   Keys,
-  RuntimeArgs, decodeBase16, CLAccountHash, CLString
+  RuntimeArgs, decodeBase16, CLAccountHash, CLString, CLU256Type
 } from "casper-js-sdk";
 import { CasperContractClient, helpers, constants, utils } from "casper-js-client-helper";
 import { BigNumberish } from '@ethersproject/bignumber';
@@ -187,7 +187,8 @@ export default class IDOClient extends CasperContractClient {
 
   public async orderOf(account: string): Promise<Some<CLU256> | undefined> {
     try {
-      return await this.queryContractDictionary("orders", account);
+      const preferKey = account.startsWith("account-hash-") ? account.slice(13) : account;
+      return await this.queryContractDictionary("orders", preferKey);
     } catch (error: any) {
       return undefined;
     }
@@ -229,4 +230,25 @@ export default class IDOClient extends CasperContractClient {
     });
   }
 
+  public async addOrders(
+    keys: Keys.AsymmetricKey,
+    orders: Map<string, BigNumberish>,
+    paymentAmount: string,
+    ttl = DEFAULT_TTL,) {
+    const clOrders = new CLMap([new CLStringType(), new CLU256Type()]);
+    orders.forEach((orderAmout, account) => {
+      clOrders.set(CLValueBuilder.string(account), CLValueBuilder.u256(orderAmout));
+    });
+    const runtimeArgs = RuntimeArgs.fromMap({
+      orders: clOrders,
+    });
+
+    return await this.contractCall({
+      entryPoint: "add_orders",
+      keys,
+      paymentAmount,
+      runtimeArgs,
+      ttl,
+    });
+  }
 }
