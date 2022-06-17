@@ -25,8 +25,9 @@ impl CasperIdoInstance {
         auction_token: Option<String>,
         auction_token_price: U256,
         auction_token_capacity: U256,
-        pay_token: Option<ContractHash>,
+        pay_token: Option<String>,
         schedules: Schedules,
+        treasury_wallet: String,
     ) -> CasperIdoInstance {
         CasperIdoInstance(TestContract::new(
             env,
@@ -44,6 +45,7 @@ impl CasperIdoInstance {
                 "auction_token_capacity" => auction_token_capacity,
                 "pay_token" => pay_token,
                 "schedules" => schedules,
+                "treasury_wallet" => treasury_wallet
             },
         ))
     }
@@ -74,6 +76,36 @@ impl CasperIdoInstance {
             "add_orders",
             runtime_args! {
                 "orders" => orders
+            },
+        );
+    }
+
+    pub fn change_time_schedules(
+        self,
+        sender: AccountHash,
+        auction_start_time: Time,
+        auction_end_time: Time,
+        launch_time: Time,
+        schedules: Schedules,
+    ) {
+        self.0.call_contract(
+            sender,
+            "add_orders",
+            runtime_args! {
+                "auction_start_time" => auction_start_time,
+                "auction_end_time" => auction_end_time,
+                "launch_time" => launch_time,
+                "schedules" => schedules,
+            },
+        );
+    }
+
+    pub fn set_treasury_wallet(&self, sender: AccountHash, treasury_wallet: String) {
+        self.0.call_contract(
+            sender,
+            "set_treasury_wallet",
+            runtime_args! {
+                "treasury_wallet" => treasury_wallet,
             },
         );
     }

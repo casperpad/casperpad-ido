@@ -12,7 +12,7 @@ impl FactoryContractInstance {
         env: &TestEnv,
         contract_name: &str,
         sender: AccountHash,
-        treasury_wallet: String,
+        fee_wallet: String,
         fee_denominator: U256,
     ) -> FactoryContractInstance {
         FactoryContractInstance(TestContract::new(
@@ -21,7 +21,7 @@ impl FactoryContractInstance {
             contract_name,
             sender,
             runtime_args! {
-                "treasury_wallet" => treasury_wallet,
+                "fee_wallet" => fee_wallet,
                 "fee_denominator" => fee_denominator
             },
         ))
@@ -35,18 +35,18 @@ impl FactoryContractInstance {
         self.0.contract_hash()
     }
 
-    pub fn set_treasury_wallet(&self, sender: AccountHash, treasury_wallet: String) {
+    pub fn set_fee_wallet(&self, sender: AccountHash, fee_wallet: String) {
         self.0.call_contract(
             sender,
-            "set_treasury_wallet",
+            "set_fee_wallet",
             runtime_args! {
-                "treasury_wallet" => treasury_wallet,
+                "fee_wallet" => fee_wallet,
             },
         )
     }
 
-    pub fn get_treasury_wallet(&self) -> AccountHash {
-        self.0.query_named_key("treasury_wallet".to_string())
+    pub fn get_fee_wallet(&self) -> AccountHash {
+        self.0.query_named_key("fee_wallet".to_string())
     }
 
     pub fn set_fee_denominator(&self, sender: AccountHash, fee_denominator: U256) {

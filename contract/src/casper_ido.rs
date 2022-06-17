@@ -16,11 +16,12 @@ use contract_utils::{set_key, ContractContext, ContractStorage};
 use crate::{
     data::{
         set_creator, set_factory_contract, set_info, set_launch_time, set_schedules, Claims,
-        Orders, _get_merkle_root, _get_sold_amount, _get_total_participants, _set_merkle_root,
-        _set_sold_amount, _set_total_participants, get_auction_end_time, get_auction_start_time,
-        get_auction_token, get_auction_token_capacity, get_auction_token_price, get_creator,
-        get_pay_token, get_schedules, set_auction_end_time, set_auction_start_time,
-        set_auction_token, set_auction_token_capacity, set_auction_token_price, set_pay_token,
+        Orders, _get_merkle_root, _get_sold_amount, _get_total_participants, _get_treasury_wallet,
+        _set_merkle_root, _set_sold_amount, _set_total_participants, _set_treasury_wallet,
+        get_auction_end_time, get_auction_start_time, get_auction_token,
+        get_auction_token_capacity, get_auction_token_price, get_creator, get_pay_token,
+        get_schedules, set_auction_end_time, set_auction_start_time, set_auction_token,
+        set_auction_token_capacity, set_auction_token_price, set_pay_token,
     },
     enums::Address,
     event::{self, CasperIdoEvent},
@@ -42,6 +43,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         auction_token_capacity: U256,
         pay_token: Option<ContractHash>,
         schedules: Schedules,
+        treasury_wallet: AccountHash,
     ) {
         set_info(info);
         set_creator(runtime::get_caller());
@@ -61,6 +63,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         _set_merkle_root("".to_string());
         _set_total_participants(0);
         _set_sold_amount(U256::from(0));
+        _set_treasury_wallet(treasury_wallet);
         Orders::init();
         Claims::init();
     }
@@ -105,7 +108,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             Some(_) => {
                 IERC20::new(token).transfer_from(
                     Address::from(caller),
-                    Address::from(self.creator()),
+                    Address::from(self.treasury_wallet()),
                     amount,
                 );
                 amount
@@ -157,10 +160,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             }
             None => {
                 let purse_balance = system::get_purse_balance(deposit_purse).unwrap_or_revert();
-                let auction_creator = get_creator();
+
                 system::transfer_from_purse_to_account(
                     deposit_purse,
-                    auction_creator,
+                    self.treasury_wallet(),
                     purse_balance,
                     None,
                 )
@@ -248,6 +251,30 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             Orders::instance().set(&Key::from(account), unchecked_new_order_amount);
             set_key("result", *user_order.1);
         });
+    }
+
+    fn change_time_schedules(
+        &mut self,
+        auction_start_time: Time,
+        auction_end_time: Time,
+        launch_time: Time,
+        schedules: Schedules,
+    ) {
+        self._assert_before_auction_time();
+        self._assert_caller_is_creator();
+        set_auction_start_time(auction_start_time);
+        set_auction_end_time(auction_end_time);
+        set_launch_time(launch_time);
+        set_schedules(schedules);
+    }
+
+    fn set_treasury_wallet(&mut self, treasury_wallet: AccountHash) {
+        self._assert_caller_is_creator();
+        _set_treasury_wallet(treasury_wallet);
+    }
+
+    fn treasury_wallet(&self) -> AccountHash {
+        _get_treasury_wallet()
     }
 
     fn pay_token(&self) -> Option<ContractHash> {

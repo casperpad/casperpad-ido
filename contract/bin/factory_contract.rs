@@ -43,8 +43,8 @@ impl AdminControl<OnChainContractStorage> for FactoryContract {}
 impl ReentrancyGuard<OnChainContractStorage> for FactoryContract {}
 
 impl FactoryContract {
-    fn constructor(&mut self, fee_denominator: U256, treasury_wallet: AccountHash) {
-        Factory::init(self, fee_denominator, treasury_wallet);
+    fn constructor(&mut self, fee_denominator: U256, fee_wallet: AccountHash) {
+        Factory::init(self, fee_denominator, fee_wallet);
         AdminControl::init(self);
         ReentrancyGuard::init(self);
     }
@@ -53,11 +53,11 @@ impl FactoryContract {
 #[no_mangle]
 pub extern "C" fn constructor() {
     let fee_denominator: U256 = runtime::get_named_arg("fee_denominator");
-    let treasury_wallet: AccountHash = {
-        let treasury_wallet_str: String = runtime::get_named_arg("treasury_wallet");
-        AccountHash::from_formatted_str(&treasury_wallet_str).unwrap()
+    let fee_wallet: AccountHash = {
+        let fee_wallet_str: String = runtime::get_named_arg("fee_wallet");
+        AccountHash::from_formatted_str(&fee_wallet_str).unwrap()
     };
-    FactoryContract::default().constructor(fee_denominator, treasury_wallet);
+    FactoryContract::default().constructor(fee_denominator, fee_wallet);
     let default_admin = runtime::get_caller();
 
     FactoryContract::default().add_admin_without_checked(Key::from(default_admin));
@@ -98,13 +98,13 @@ pub extern "C" fn set_fee_denominator() {
 }
 
 #[no_mangle]
-pub extern "C" fn set_treasury_wallet() {
+pub extern "C" fn set_fee_wallet() {
     FactoryContract::default().assert_caller_is_admin();
-    let treasury_wallet: AccountHash = {
-        let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
-        AccountHash::from_formatted_str(&treasury_wallet).unwrap()
+    let fee_wallet: AccountHash = {
+        let fee_wallet: String = runtime::get_named_arg("fee_wallet");
+        AccountHash::from_formatted_str(&fee_wallet).unwrap()
     };
-    FactoryContract::default().set_treasury_wallet(treasury_wallet);
+    FactoryContract::default().set_fee_wallet(fee_wallet);
 }
 
 #[no_mangle]
@@ -130,7 +130,7 @@ pub extern "C" fn remove_auction() {
 #[no_mangle]
 pub extern "C" fn call() {
     let contract_name: String = runtime::get_named_arg("contract_name");
-    let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
+    let fee_wallet: String = runtime::get_named_arg("fee_wallet");
     let fee_denominator: U256 = runtime::get_named_arg("fee_denominator");
 
     let (contract_hash, _) = storage::new_contract(
@@ -155,7 +155,7 @@ pub extern "C" fn call() {
             .unwrap_or_revert();
 
     let constructor_args = runtime_args! {
-        "treasury_wallet" => treasury_wallet,
+        "fee_wallet" => fee_wallet,
         "fee_denominator" => fee_denominator
     };
     let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
@@ -182,7 +182,7 @@ fn get_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         "constructor",
         vec![
-            Parameter::new("treasury_wallet".to_string(), CLType::String),
+            Parameter::new("fee_wallet".to_string(), CLType::String),
             Parameter::new("fee_denominator".to_string(), CLType::U256),
         ],
         CLType::Unit,
@@ -199,11 +199,8 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "set_treasury_wallet",
-        vec![Parameter::new(
-            "treasury_wallet".to_string(),
-            CLType::String,
-        )],
+        "set_fee_wallet",
+        vec![Parameter::new("fee_wallet".to_string(), CLType::String)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

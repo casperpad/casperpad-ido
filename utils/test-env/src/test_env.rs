@@ -8,6 +8,7 @@ use casper_engine_test_support::{
 };
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, CLTyped, Key, PublicKey, RuntimeArgs, SecretKey,
+    U512,
 };
 
 use crate::utils::{deploy, fund_account, query, query_dictionary_item, DeploySource};
@@ -96,6 +97,18 @@ impl TestEnv {
 
     pub fn get_account(&self, account_hash: AccountHash) -> Option<casper_types::account::Account> {
         self.state.lock().unwrap().builder.get_account(account_hash)
+    }
+
+    pub fn account_purse_balance(&self, account_hash: AccountHash) -> U512 {
+        let purse = self
+            .state
+            .lock()
+            .unwrap()
+            .builder
+            .get_account(account_hash)
+            .unwrap()
+            .main_purse();
+        self.state.lock().unwrap().builder.get_purse_balance(purse)
     }
 
     pub fn next_user(&self) -> AccountHash {

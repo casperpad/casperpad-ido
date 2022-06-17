@@ -10,7 +10,7 @@ use casper_ido_contract::{
     structs::{Schedules, Time},
 };
 use casper_types::{
-    account::AccountHash, runtime_args, ContractHash, PublicKey, RuntimeArgs, SecretKey, U256, U512,
+    account::AccountHash, runtime_args, PublicKey, RuntimeArgs, SecretKey, U256, U512,
 };
 use test_env::{utils::DeploySource, TestEnv};
 
@@ -65,7 +65,8 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
     let mut schedules: Schedules = Schedules::new();
     schedules.insert(since_the_epoch + 666666, U256::from(4000));
     schedules.insert(since_the_epoch + 777777, U256::from(6000));
-    let pay_token: Option<ContractHash> = None;
+    let pay_token: Option<String> = None;
+    let treasury_wallet = AccountHash::new([3u8; 32]).to_formatted_string();
     let casper_ido_instance = CasperIdoInstance::new(
         &env,
         factory_contract_instance
@@ -82,6 +83,7 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
         auction_token_capacity,
         pay_token,
         schedules,
+        treasury_wallet,
     );
 
     let test_context = TestContext {
@@ -165,6 +167,9 @@ fn should_create_order_and_claim() {
     let tier = U256::from(2u8).checked_mul(U256::exp10(18)).unwrap();
     let amount = U512::from(50u8).checked_mul(U512::exp10(9)).unwrap();
 
+    let new_treasury_wallet = AccountHash::new([4u8; 32]);
+    ido_contract.set_treasury_wallet(owner, new_treasury_wallet.to_formatted_string());
+
     let session_code = PathBuf::from(PRE_CREATE_ORDER_WASM);
     env.run_with_time(
         user,
@@ -189,18 +194,19 @@ fn should_create_order_and_claim() {
             .checked_add(Duration::from_secs(7666660))
             .unwrap(),
     );
-
+    let treasury_wallet_balance = env.account_purse_balance(new_treasury_wallet);
+    assert!(amount.eq(&treasury_wallet_balance));
     let _ = erc20.balance_of(Address::Account(user)).unwrap();
 }
 
 #[test]
-fn should_set_treasury_wallet() {
+fn should_set_fee_wallet() {
     let (env, test_context, owner) = deploy();
     let factory_contract = test_context.factory_contract_instance;
-    let treasury_wallet = env.next_user();
-    factory_contract.set_treasury_wallet(owner, treasury_wallet.to_formatted_string());
-    let stored_treasury_wallet = factory_contract.get_treasury_wallet();
-    assert_eq!(treasury_wallet, stored_treasury_wallet)
+    let fee_wallet = env.next_user();
+    factory_contract.set_fee_wallet(owner, fee_wallet.to_formatted_string());
+    let stored_fee_wallet = factory_contract.get_fee_wallet();
+    assert_eq!(fee_wallet, stored_fee_wallet)
 }
 
 #[test]

@@ -227,6 +227,16 @@ pub fn _get_treasury_wallet() -> AccountHash {
     get_key(TREASURY_WALLET).unwrap_or_revert()
 }
 
+const FEE_WALLET: &str = "fee_wallet";
+
+pub fn _set_fee_wallet(fee_wallet: AccountHash) {
+    set_key(FEE_WALLET, fee_wallet);
+}
+
+pub fn _get_fee_wallet() -> AccountHash {
+    get_key(FEE_WALLET).unwrap_or_revert()
+}
+
 const AUCTIONS: &str = "auctions";
 
 pub fn _set_auctions(auctions: Vec<(ContractHash, Time, Time)>) {
