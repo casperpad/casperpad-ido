@@ -8,20 +8,18 @@ use casper_contract::{
     contract_api::{runtime, system},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{
-    account::AccountHash, ApiError, ContractHash, ContractPackageHash, Key, URef, U256,
-};
-use contract_utils::{set_key, ContractContext, ContractStorage};
+use casper_types::{account::AccountHash, ContractHash, ContractPackageHash, Key, URef, U256};
+use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
     data::{
-        set_creator, set_factory_contract, set_info, set_launch_time, set_schedules, Claims,
-        Orders, _get_merkle_root, _get_sold_amount, _get_total_participants, _get_treasury_wallet,
-        _set_merkle_root, _set_sold_amount, _set_total_participants, _set_treasury_wallet,
-        get_auction_end_time, get_auction_start_time, get_auction_token,
-        get_auction_token_capacity, get_auction_token_price, get_creator, get_pay_token,
-        get_schedules, set_auction_end_time, set_auction_start_time, set_auction_token,
-        set_auction_token_capacity, set_auction_token_price, set_pay_token,
+        set_creator, set_schedules, Claims, Orders, _get_merkle_root, _get_sold_amount,
+        _get_total_participants, _get_treasury_wallet, _set_merkle_root, _set_sold_amount,
+        _set_total_participants, _set_treasury_wallet, get_auction_end_time,
+        get_auction_start_time, get_auction_token, get_auction_token_capacity,
+        get_auction_token_price, get_creator, get_pay_token, get_schedules, set_auction_end_time,
+        set_auction_start_time, set_auction_token, set_auction_token_capacity,
+        set_auction_token_price, set_pay_token,
     },
     enums::Address,
     event::{self, CasperIdoEvent},
@@ -33,33 +31,23 @@ use crate::{
 pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     fn init(
         &mut self,
-        factory_contract: ContractHash,
-        info: &str,
         auction_start_time: Time,
         auction_end_time: Time,
-        launch_time: Time,
-        auction_token: Option<ContractHash>,
         auction_token_price: U256,
         auction_token_capacity: U256,
         pay_token: Option<ContractHash>,
         schedules: Schedules,
         treasury_wallet: AccountHash,
     ) {
-        set_info(info);
         set_creator(runtime::get_caller());
         set_auction_start_time(auction_start_time);
         set_auction_end_time(auction_end_time);
-        set_launch_time(launch_time);
-        if auction_token.is_some() {
-            set_auction_token(auction_token.unwrap());
-        } else {
-            set_auction_token(ContractHash::new([0u8; 32]));
-        }
+
+        set_auction_token(ContractHash::new([0u8; 32]));
         set_auction_token_price(auction_token_price);
         set_auction_token_capacity(auction_token_capacity);
         set_pay_token(pay_token);
         set_schedules(schedules);
-        set_factory_contract(factory_contract);
         _set_merkle_root("".to_string());
         _set_total_participants(0);
         _set_sold_amount(U256::from(0));
@@ -74,8 +62,8 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     }
 
     fn set_auction_token(&mut self, auction_token: ContractHash) {
-        self._assert_caller_is_creator();
-        self._assert_before_auction_time();
+        self._asert_null_auction_token();
+        self._assert_before_first_shedule_time();
         let auction_creator = get_creator();
         IERC20::new(auction_token).transfer_from(
             Address::from(auction_creator),
@@ -91,7 +79,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         caller: AccountHash,
         tier: U256,
         proof: Vec<(String, u8)>,
-        token: ContractHash,
         amount: U256,
     ) {
         // Check caller is whitelisted
@@ -105,7 +92,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
         // Check payment is right
         let order_amount = match pay_token {
-            Some(_) => {
+            Some(token) => {
                 IERC20::new(token).transfer_from(
                     Address::from(caller),
                     Address::from(self.treasury_wallet()),
@@ -232,13 +219,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     /// Set merkle_root , only admin call
     fn set_merkle_root(&mut self, merkle_root: String) {
-        self._assert_caller_is_creator();
         _set_merkle_root(merkle_root);
     }
 
     fn add_orders(&mut self, orders: BTreeMap<String, U256>) {
-        self._assert_caller_is_creator();
-
         orders.iter().enumerate().for_each(|order| {
             let user_order = order.1;
             let account = AccountHash::from_formatted_str(user_order.0).unwrap();
@@ -248,28 +232,36 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
                 .unwrap_or(U256::zero());
             let unchecked_new_order_amount = exist_order_amount.checked_add(order_amount).unwrap();
 
+            if exist_order_amount.eq(&U256::zero()) {
+                self.increase_sold_amount_and_participants(order_amount);
+            } else {
+                self._increase_sold_amount(order_amount);
+            }
+
             Orders::instance().set(&Key::from(account), unchecked_new_order_amount);
-            set_key("result", *user_order.1);
         });
+    }
+
+    fn change_auction_token_price(&mut self, price: U256) {
+        self._assert_before_auction_time();
+        set_auction_token_price(price);
     }
 
     fn change_time_schedules(
         &mut self,
         auction_start_time: Time,
         auction_end_time: Time,
-        launch_time: Time,
         schedules: Schedules,
     ) {
         self._assert_before_auction_time();
-        self._assert_caller_is_creator();
+
         set_auction_start_time(auction_start_time);
         set_auction_end_time(auction_end_time);
-        set_launch_time(launch_time);
+
         set_schedules(schedules);
     }
 
     fn set_treasury_wallet(&mut self, treasury_wallet: AccountHash) {
-        self._assert_caller_is_creator();
         _set_treasury_wallet(treasury_wallet);
     }
 
@@ -330,10 +322,20 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         get_auction_token_capacity()
     }
 
-    fn _assert_caller_is_creator(&self) {
-        let auction_creator = get_creator();
-        if auction_creator != runtime::get_caller() {
-            runtime::revert(ApiError::PermissionDenied);
+    fn _asert_null_auction_token(&self) {
+        let auction_token = self.auction_token();
+        if auction_token.ne(&ContractHash::new([0u8; 32])) {
+            runtime::revert(Error::AlreadySettedToken);
+        }
+    }
+
+    fn _assert_before_first_shedule_time(&self) {
+        let time = Time::from(runtime::get_blocktime());
+        let schedules = get_schedules();
+        let first_time = schedules.keys().min().unwrap();
+
+        if time.gt(&first_time) {
+            runtime::revert(Error::InvalidTime);
         }
     }
 

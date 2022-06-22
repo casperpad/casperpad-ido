@@ -33,6 +33,7 @@ pub enum Error {
     InvalidSchedule = 54,
     InvalidPayToken = 55,
     InvalidMerkleRoot = 56,
+    AlreadySettedToken = 57,
 
     // Contract Error
     InvalidContext = 90,

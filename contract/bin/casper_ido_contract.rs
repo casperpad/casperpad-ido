@@ -22,17 +22,15 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_ido_contract::{
-    enums::Address,
     structs::{Schedules, Time},
-    CasperIdo, IFactory,
+    CasperIdo,
 };
 
 use casper_types::{
-    account::AccountHash, runtime_args, CLType, CLTyped, ContractHash, ContractPackageHash,
-    EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Parameter, RuntimeArgs, URef,
-    U256,
+    account::AccountHash, runtime_args, CLType, ContractHash, ContractPackageHash, EntryPoint,
+    EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs, URef, U256,
 };
-use contract_utils::{ContractContext, OnChainContractStorage, ReentrancyGuard};
+use contract_utils::{AdminControl, ContractContext, OnChainContractStorage, ReentrancyGuard};
 
 #[derive(Default)]
 struct CasperIdoContract(OnChainContractStorage);
@@ -45,16 +43,13 @@ impl ContractContext<OnChainContractStorage> for CasperIdoContract {
 
 impl CasperIdo<OnChainContractStorage> for CasperIdoContract {}
 impl ReentrancyGuard<OnChainContractStorage> for CasperIdoContract {}
+impl AdminControl<OnChainContractStorage> for CasperIdoContract {}
 
 impl CasperIdoContract {
     fn constructor(
         &mut self,
-        factory_contract: ContractHash,
-        info: &str,
         auction_start_time: Time,
         auction_end_time: Time,
-        launch_time: Time,
-        auction_token: Option<ContractHash>,
         auction_token_price: U256,
         auction_token_capacity: U256,
         pay_token: Option<ContractHash>,
@@ -63,38 +58,24 @@ impl CasperIdoContract {
     ) {
         CasperIdo::init(
             self,
-            factory_contract,
-            info,
             auction_start_time,
             auction_end_time,
-            launch_time,
-            auction_token,
             auction_token_price,
             auction_token_capacity,
             pay_token,
             schedules,
             treasury_wallet,
         );
+        AdminControl::init(self);
         ReentrancyGuard::init(self);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn constructor() {
-    let factory_contract: ContractHash = {
-        let constract_str: String = runtime::get_named_arg("factory_contract");
-        ContractHash::from_formatted_str(&constract_str).unwrap()
-    };
-    let info: String = runtime::get_named_arg("info");
     let creator = runtime::get_caller();
-    let auction_created_time = Time::from(runtime::get_blocktime());
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
-    let launch_time: Time = runtime::get_named_arg("launch_time");
-    let auction_token = {
-        let auction_token_str: Option<String> = runtime::get_named_arg("auction_token");
-        auction_token_str.map(|str| ContractHash::from_formatted_str(&str).unwrap())
-    };
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
     let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
     let pay_token: Option<ContractHash> = {
@@ -107,18 +88,16 @@ pub extern "C" fn constructor() {
         AccountHash::from_formatted_str(&treasury_wallet_str).unwrap()
     };
     CasperIdoContract::default().constructor(
-        factory_contract,
-        &info,
         auction_start_time,
         auction_end_time,
-        launch_time,
-        auction_token,
         auction_token_price,
         auction_token_capacity,
         pay_token,
         schedules,
         treasury_wallet,
     );
+    let default_admin = runtime::get_caller();
+    CasperIdoContract::default().add_admin_without_checked(Key::from(default_admin))
 }
 
 #[no_mangle]
@@ -126,13 +105,9 @@ pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
     let tier: U256 = runtime::get_named_arg("tier");
     let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
-    let token: ContractHash = {
-        let token_contract_string: String = runtime::get_named_arg("token");
-        ContractHash::from_formatted_str(&token_contract_string).unwrap()
-    };
     let amount: U256 = runtime::get_named_arg("amount");
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().create_order(caller, tier, proof, token, amount);
+    CasperIdoContract::default().create_order(caller, tier, proof, amount);
     CasperIdoContract::default().clear_reentrancy();
 }
 
@@ -150,9 +125,8 @@ pub extern "C" fn create_order_cspr() {
 #[no_mangle]
 pub extern "C" fn add_orders() {
     let orders: BTreeMap<String, U256> = runtime::get_named_arg("orders");
-    CasperIdoContract::default().set_reentrancy();
+    CasperIdoContract::default().assert_caller_is_admin();
     CasperIdoContract::default().add_orders(orders);
-    CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
@@ -171,7 +145,15 @@ pub extern "C" fn set_auction_token() {
         let auction_token_str: String = runtime::get_named_arg("auction_token");
         ContractHash::from_formatted_str(&auction_token_str).unwrap()
     };
+    CasperIdoContract::default().assert_caller_is_admin();
     CasperIdoContract::default().set_auction_token(auction_token);
+}
+
+#[no_mangle]
+pub extern "C" fn change_auction_token_price() {
+    let auction_token_price: U256 = runtime::get_named_arg("price");
+    CasperIdoContract::default().assert_caller_is_admin();
+    CasperIdoContract::default().change_auction_token_price(auction_token_price);
 }
 
 #[no_mangle]
@@ -180,6 +162,7 @@ pub extern "C" fn set_treasury_wallet() {
         let treasury_wallet_str: String = runtime::get_named_arg("treasury_wallet");
         AccountHash::from_formatted_str(&treasury_wallet_str).unwrap()
     };
+    CasperIdoContract::default().assert_caller_is_admin();
     CasperIdoContract::default().set_treasury_wallet(treasury_wallet);
 }
 
@@ -187,12 +170,11 @@ pub extern "C" fn set_treasury_wallet() {
 pub extern "C" fn change_time_schedules() {
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
-    let launch_time: Time = runtime::get_named_arg("launch_time");
     let schedules: Schedules = runtime::get_named_arg("schedules");
+    CasperIdoContract::default().assert_caller_is_admin();
     CasperIdoContract::default().change_time_schedules(
         auction_start_time,
         auction_end_time,
-        launch_time,
         schedules,
     );
 }
@@ -200,18 +182,33 @@ pub extern "C" fn change_time_schedules() {
 #[no_mangle]
 pub extern "C" fn set_merkle_root() {
     let merkle_root: String = runtime::get_named_arg("merkle_root");
+    CasperIdoContract::default().assert_caller_is_admin();
     CasperIdoContract::default().set_merkle_root(merkle_root);
+}
+
+#[no_mangle]
+pub extern "C" fn add_admin() {
+    let admin: AccountHash = {
+        let admin_string: String = runtime::get_named_arg("admin");
+        AccountHash::from_formatted_str(&admin_string).unwrap()
+    };
+    CasperIdoContract::default().add_admin(Key::from(admin));
+}
+
+#[no_mangle]
+pub extern "C" fn remove_admin() {
+    let admin: AccountHash = {
+        let admin_string: String = runtime::get_named_arg("admin");
+        AccountHash::from_formatted_str(&admin_string).unwrap()
+    };
+    CasperIdoContract::default().disable_admin(Key::from(admin));
 }
 
 #[no_mangle]
 pub extern "C" fn call() {
     let contract_name: String = runtime::get_named_arg("contract_name");
-    let factory_contract: String = runtime::get_named_arg("factory_contract");
-    let info: String = runtime::get_named_arg("info");
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
-    let launch_time: Time = runtime::get_named_arg("launch_time");
-    let auction_token: Option<String> = runtime::get_named_arg("auction_token");
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
     let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
     let pay_token: Option<String> = runtime::get_named_arg("pay_token");
@@ -240,12 +237,8 @@ pub extern "C" fn call() {
             .unwrap_or_revert();
 
     let constructor_args = runtime_args! {
-        "factory_contract" => factory_contract.clone(),
-        "info" => info,
         "auction_start_time" => auction_start_time,
         "auction_end_time" => auction_end_time,
-        "launch_time" => launch_time,
-        "auction_token" => auction_token,
         "auction_token_price" => auction_token_price,
         "auction_token_capacity" => auction_token_capacity,
         "pay_token" => pay_token,
@@ -263,16 +256,6 @@ pub extern "C" fn call() {
         &format!("{}_contract_hash", contract_name),
         contract_hash.into(),
     );
-    runtime::put_key(
-        &format!("{}_contract_hash_wrapped", contract_name),
-        storage::new_uref(contract_hash).into(),
-    );
-    // IMPORTANT!!!
-    IFactory::new(ContractHash::from_formatted_str(&factory_contract).unwrap()).add_auction(
-        contract_hash,
-        auction_start_time,
-        auction_end_time,
-    );
 }
 
 fn get_entry_points() -> EntryPoints {
@@ -280,10 +263,21 @@ fn get_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(EntryPoint::new(
         "constructor",
-        vec![Parameter::new(
-            "default_treasury_wallet".to_string(),
-            Address::cl_type(),
-        )],
+        vec![
+            Parameter::new("auction_start_time".to_string(), CLType::U64),
+            Parameter::new("auction_end_time".to_string(), CLType::U64),
+            Parameter::new("auction_token_price".to_string(), CLType::U256),
+            Parameter::new("auction_token_capacity".to_string(), CLType::U256),
+            Parameter::new("pay_token".to_string(), CLType::String),
+            Parameter::new(
+                "schedules".to_string(),
+                CLType::Map {
+                    key: Box::new(CLType::U64),
+                    value: Box::new(CLType::U256),
+                },
+            ),
+            Parameter::new("treasury_wallet".to_string(), CLType::U64),
+        ],
         CLType::Unit,
         EntryPointAccess::Groups(vec![Group::new("constructor")]),
         EntryPointType::Contract,
@@ -300,7 +294,6 @@ fn get_entry_points() -> EntryPoints {
                     Box::new(CLType::U8),
                 ]))),
             ),
-            Parameter::new("token".to_string(), CLType::String),
             Parameter::new("amount".to_string(), CLType::U256),
         ],
         CLType::Unit,
@@ -341,25 +334,6 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "change_time_schedules",
-        vec![
-            Parameter::new("auction_start_time".to_string(), CLType::U64),
-            Parameter::new("auction_end_time".to_string(), CLType::U64),
-            Parameter::new("launch_time".to_string(), CLType::U64),
-            Parameter::new(
-                "schedules".to_string(),
-                CLType::Map {
-                    key: Box::new(CLType::U64),
-                    value: Box::new(CLType::U256),
-                },
-            ),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
         "claim",
         vec![Parameter::new("schedule_time".to_string(), CLType::U64)],
         CLType::Unit,
@@ -370,6 +344,14 @@ fn get_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         "set_auction_token",
         vec![Parameter::new("auction_token".to_string(), CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "change_auction_token_price",
+        vec![Parameter::new("price".to_string(), CLType::U256)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
@@ -387,8 +369,42 @@ fn get_entry_points() -> EntryPoints {
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
+        "change_time_schedules",
+        vec![
+            Parameter::new("auction_start_time".to_string(), CLType::U64),
+            Parameter::new("auction_end_time".to_string(), CLType::U64),
+            Parameter::new(
+                "schedules".to_string(),
+                CLType::Map {
+                    key: Box::new(CLType::U64),
+                    value: Box::new(CLType::U256),
+                },
+            ),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
         "set_merkle_root",
         vec![Parameter::new("merkle_root".to_string(), CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "add_admin",
+        vec![Parameter::new("admin".to_string(), CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "remove_admin",
+        vec![Parameter::new("admin".to_string(), CLType::String)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

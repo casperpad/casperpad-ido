@@ -66,16 +66,6 @@ impl Claims {
     }
 }
 
-const INFO: &str = "info";
-
-pub fn set_info(info: &str) {
-    set_key(INFO, info);
-}
-
-pub fn _get_info() -> String {
-    get_key(INFO).unwrap_or_revert()
-}
-
 const CREATOR: &str = "creator";
 
 pub fn set_creator(creator: AccountHash) {
@@ -114,16 +104,6 @@ pub fn set_auction_end_time(time: Time) {
 
 pub fn get_auction_end_time() -> Time {
     get_key(AUCTION_END_TIME).unwrap_or_revert()
-}
-
-const LAUNCH_TIME: &str = "launch_time";
-
-pub fn set_launch_time(time: Time) {
-    set_key(LAUNCH_TIME, time);
-}
-
-pub fn _get_launch_time() -> Time {
-    get_key(LAUNCH_TIME).unwrap_or_revert()
 }
 
 const AUCTION_TOKEN: &str = "auction_token";
@@ -174,16 +154,6 @@ pub fn set_schedules(schedules: Schedules) {
 
 pub fn get_schedules() -> Schedules {
     get_key(SCHEDULES).unwrap_or_revert()
-}
-
-const FACTORY_CONTRACT: &str = "factory_contract";
-
-pub fn set_factory_contract(contract_hash: ContractHash) {
-    set_key(FACTORY_CONTRACT, contract_hash);
-}
-
-pub fn _get_factory_contract() -> ContractHash {
-    get_key(FACTORY_CONTRACT).unwrap_or_revert()
 }
 
 const TOTAL_PARTICIPANTS: &str = "total_participants";

@@ -15,14 +15,10 @@ pub struct CasperIdoInstance(TestContract);
 impl CasperIdoInstance {
     pub fn new(
         env: &TestEnv,
-        factory_contract: String,
         contract_name: &str,
         sender: AccountHash,
-        info: &str,
         auction_start_time: Time,
         auction_end_time: Time,
-        launch_time: Time,
-        auction_token: Option<String>,
         auction_token_price: U256,
         auction_token_capacity: U256,
         pay_token: Option<String>,
@@ -35,12 +31,8 @@ impl CasperIdoInstance {
             contract_name,
             sender,
             runtime_args! {
-                "factory_contract" => factory_contract,
-                "info" => info,
                 "auction_start_time" => auction_start_time,
                 "auction_end_time" => auction_end_time,
-                "launch_time" => launch_time,
-                "auction_token" => auction_token,
                 "auction_token_price" => auction_token_price,
                 "auction_token_capacity" => auction_token_capacity,
                 "pay_token" => pay_token,
@@ -125,17 +117,18 @@ impl CasperIdoInstance {
         sender: AccountHash,
         tier: U256,
         proof: Vec<(String, u8)>,
-        token: String,
         amount: U256,
+        time: SystemTime,
     ) {
-        self.0.call_contract(
+        self.0.call_contract_with_time(
             sender,
-            "set_cspr_price",
+            "create_order",
             runtime_args! {
-            "tier" => tier,
-            "proof" => proof,
-            "token" => token,
-            "amount" => amount},
+                "tier" => tier,
+                "proof" => proof,
+                "amount" => amount
+            },
+            time,
         );
     }
 

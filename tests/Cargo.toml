@@ -16,5 +16,5 @@ hex = "0.4.3"
 blake2 = "0.10.4"
 base64 = "0.13.0"
 
-[features]
-default = ["casper-contract/std", "casper-types/std", "casper-contract/test-support"]
+# [features]
+# default = ["casper-contract/std", "caper-types/std", "casper-contract/test-support"]
