@@ -22,15 +22,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { Ok, Err, Some, None } from "ts-results";
 import { keyAndValueToHex } from "./utlis";
 
-const {
-  fromCLMap,
-  toCLMap,
-  installContract,
-  setClient,
-  contractSimpleGetter,
-  contractCallFn,
-  createRecipientAddress,
-} = helpers;
+const { installContract, setClient, contractSimpleGetter } = helpers;
 
 const { DEFAULT_TTL } = constants;
 
@@ -54,18 +46,6 @@ export default class IDOClient extends CasperContractClient {
     sold_amount: string;
   };
 
-  /**
-   * Installs the ERC20 contract.
-   *
-   * @param keys AsymmetricKey that will be used to install the contract.
-   * @param contractName Name of the Factory contract.
-   * @param treasuryWallet treasury wallet.
-   * @param feeDenominator Specifies fee denominator.
-   * @param paymentAmount The payment amount that will be used to install the contract.
-   * @param wasmPath Path to the WASM file that will be installed.
-   *
-   * @returns Installation deploy hash.
-   */
   public async install(
     keys: Keys.AsymmetricKey,
     contractName: string,
@@ -133,7 +113,6 @@ export default class IDOClient extends CasperContractClient {
         "factory_contract",
         "info",
         "launch_time",
-        "merkle_root",
         "orders",
         "reentrancy_guard",
         "schedules",
@@ -235,25 +214,6 @@ export default class IDOClient extends CasperContractClient {
     console.log(runtimeArgs);
     return await this.contractCall({
       entryPoint: "change_time_schedules",
-      keys,
-      paymentAmount,
-      runtimeArgs,
-      ttl,
-    });
-  }
-
-  public async setMerkleRoot(
-    keys: Keys.AsymmetricKey,
-    merkleRoot: string,
-    paymentAmount: string,
-    ttl = DEFAULT_TTL
-  ) {
-    const runtimeArgs = RuntimeArgs.fromMap({
-      merkle_root: CLValueBuilder.string(merkleRoot),
-    });
-
-    return await this.contractCall({
-      entryPoint: "set_merkle_root",
       keys,
       paymentAmount,
       runtimeArgs,

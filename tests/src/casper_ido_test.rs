@@ -82,29 +82,6 @@ fn _whitlisted_users() -> Vec<AccountHash> {
     accounts
 }
 
-fn get_proof() -> Vec<(String, u8)> {
-    // proof for seconde env user
-    // left :0 , right:1
-    vec![
-        (
-            "8cb9c5592ec280a04113339fd485f4c9624d54a57f5bfd8a624c48b87cf3a4d0".to_string(),
-            1u8,
-        ),
-        (
-            "aadf43a695e899258595d7ca69de2369369c7add74a07e728121ef5b5971fb89".to_string(),
-            0u8,
-        ),
-        (
-            "6f7fbab2e9ca755cc58c3321a7fad3120fb3ba04aad9f7df6cba3d19536f7d6a".to_string(),
-            1u8,
-        ),
-        (
-            "85ec4e9e4eb79e2fa6f730ad6a311c2dae85f798054f1d4018a92ec7f511d50f".to_string(),
-            1u8,
-        ),
-    ]
-}
-
 #[test]
 fn test_deploy() {
     let _ = deploy();
@@ -133,12 +110,6 @@ fn should_create_order_and_claim() {
             .unwrap(),
     );
 
-    // Set merkle root
-    ido_contract.set_merkle_root(
-        owner,
-        "32f7f9803d8e88954435659db24d6fdaa94ba46165fa1ce076b03f232273b3a5".to_string(),
-    );
-
     env.next_user();
     let user = env.next_user();
     let tier = U256::from(2u8).checked_mul(U256::exp10(18)).unwrap();
@@ -154,7 +125,6 @@ fn should_create_order_and_claim() {
         runtime_args! {
             "ido_contract_hash" => ido_contract.contract_hash().to_formatted_string(),
             "tier" => tier,
-            "proof" => get_proof(),
             "amount" => amount
         },
         SystemTime::now()
@@ -246,12 +216,6 @@ fn should_create_order_and_claim_erc20() {
             .unwrap(),
     );
 
-    // Set merkle root
-    ido_contract.set_merkle_root(
-        owner,
-        "32f7f9803d8e88954435659db24d6fdaa94ba46165fa1ce076b03f232273b3a5".to_string(),
-    );
-
     let new_treasury_wallet = AccountHash::new([4u8; 32]);
     ido_contract.set_treasury_wallet(owner, new_treasury_wallet.to_formatted_string());
 
@@ -271,7 +235,6 @@ fn should_create_order_and_claim_erc20() {
     ido_contract.create_order(
         user,
         tier,
-        get_proof(),
         amount,
         SystemTime::now()
             .checked_add(Duration::from_secs(20000))

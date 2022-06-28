@@ -2,9 +2,6 @@
 #![no_main]
 #![feature(default_alloc_error_handler)]
 
-#[cfg(not(target_arch = "wasm32"))]
-compile_error!("target arch should be wasm32: compile with '--target wasm32-unknown-unknown'");
-
 // We need to explicitly import the std alloc crate and `alloc::string::String` as we're in a
 // `no_std` environment.
 extern crate alloc;
@@ -15,7 +12,6 @@ use alloc::{
     format,
     string::{String, ToString},
     vec,
-    vec::Vec,
 };
 use casper_contract::{
     contract_api::{runtime, storage},
@@ -73,7 +69,6 @@ impl CasperIdoContract {
 
 #[no_mangle]
 pub extern "C" fn constructor() {
-    let creator = runtime::get_caller();
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
@@ -104,10 +99,10 @@ pub extern "C" fn constructor() {
 pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
     let tier: U256 = runtime::get_named_arg("tier");
-    let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
+
     let amount: U256 = runtime::get_named_arg("amount");
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().create_order(caller, tier, proof, amount);
+    CasperIdoContract::default().create_order(caller, tier, amount);
     CasperIdoContract::default().clear_reentrancy();
 }
 
@@ -115,10 +110,10 @@ pub extern "C" fn create_order() {
 pub extern "C" fn create_order_cspr() {
     let caller = runtime::get_caller();
     let tier: U256 = runtime::get_named_arg("tier");
-    let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
+
     let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().create_order_cspr(caller, tier, proof, deposit_purse);
+    CasperIdoContract::default().create_order_cspr(caller, tier, deposit_purse);
     CasperIdoContract::default().clear_reentrancy();
 }
 
@@ -178,13 +173,6 @@ pub extern "C" fn change_time_schedules() {
         auction_end_time,
         schedules,
     );
-}
-
-#[no_mangle]
-pub extern "C" fn set_merkle_root() {
-    let merkle_root: String = runtime::get_named_arg("merkle_root");
-    CasperIdoContract::default().assert_caller_is_admin();
-    CasperIdoContract::default().set_merkle_root(merkle_root);
 }
 
 #[no_mangle]
@@ -385,14 +373,6 @@ fn get_entry_points() -> EntryPoints {
                 },
             ),
         ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
-
-    entry_points.add_entry_point(EntryPoint::new(
-        "set_merkle_root",
-        vec![Parameter::new("merkle_root".to_string(), CLType::String)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

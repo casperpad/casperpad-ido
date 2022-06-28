@@ -109,40 +109,6 @@ const setAuctionToken = async () => {
   console.log("setAuctionToken done");
 };
 
-const setMerkelRoot = async () => {
-  const idoContract = new IDOClient(
-    NODE_ADDRESS!,
-    CHAIN_NAME!,
-    EVENT_STREAM_ADDRESS!
-  );
-  const casperClient = new CasperClient(NODE_ADDRESS!);
-  const idoContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `KUNFT Marketplace_ido_contract_hash`
-  );
-
-  await idoContract.setContractHash(idoContractHash.slice(5));
-
-  const root = genMerkleTree();
-
-  const deployHash = await idoContract.setMerkleRoot(
-    KEYS,
-    root.slice(2),
-    DEFAULT_RUN_ENTRYPOINT_PAYMENT!
-  );
-  console.log(`setMerkleRoot deploy hash: ${deployHash}`);
-  await getDeploy(NODE_ADDRESS!, deployHash);
-  console.log("setMerkleRoot done");
-
-  console.log(`... Run successfully.`);
-};
-
 const runPresaleActions = async () => {
   await setAuctionToken();
-  await setMerkelRoot();
 };
-
-// setAuctionToken();
-// runPresaleActions();
-setMerkelRoot();

@@ -2,9 +2,6 @@
 #![no_main]
 #![feature(default_alloc_error_handler)]
 
-#[cfg(not(target_arch = "wasm32"))]
-compile_error!("target arch should be wasm32: compile with '--target wasm32-unknown-unknown'");
-
 extern crate alloc;
 
 use core::convert::TryInto;

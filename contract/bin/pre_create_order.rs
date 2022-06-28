@@ -2,12 +2,9 @@
 #![no_main]
 #![feature(default_alloc_error_handler)]
 
-#[cfg(not(target_arch = "wasm32"))]
-compile_error!("target arch should be wasm32: compile with '--target wasm32-unknown-unknown'");
-
 extern crate alloc;
 
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
 use casper_contract::{
     contract_api::{account, runtime, system},
     unwrap_or_revert::UnwrapOrRevert,
@@ -21,7 +18,6 @@ pub extern "C" fn call() {
         ContractHash::from_formatted_str(&contract_hash_string).unwrap()
     };
     let tier: U256 = runtime::get_named_arg("tier");
-    let proof: Vec<(String, u8)> = runtime::get_named_arg("proof");
     let amount: U512 = runtime::get_named_arg("amount");
 
     let deposit_purse = system::create_purse();
@@ -33,7 +29,6 @@ pub extern "C" fn call() {
         "create_order_cspr",
         runtime_args! {
           "tier" => tier,
-          "proof" => proof,
           "deposit_purse" => deposit_purse,
         },
     );

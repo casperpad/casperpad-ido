@@ -109,30 +109,12 @@ impl CasperIdoInstance {
         );
     }
 
-    pub fn set_merkle_root(&self, sender: AccountHash, merkle_root: String) {
-        self.0.call_contract(
-            sender,
-            "set_merkle_root",
-            runtime_args! {
-                "merkle_root" => merkle_root
-            },
-        );
-    }
-
-    pub fn create_order(
-        &self,
-        sender: AccountHash,
-        tier: U256,
-        proof: Vec<(String, u8)>,
-        amount: U256,
-        time: SystemTime,
-    ) {
+    pub fn create_order(&self, sender: AccountHash, tier: U256, amount: U256, time: SystemTime) {
         self.0.call_contract_with_time(
             sender,
             "create_order",
             runtime_args! {
                 "tier" => tier,
-                "proof" => proof,
                 "amount" => amount
             },
             time,

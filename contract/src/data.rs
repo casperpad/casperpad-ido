@@ -1,12 +1,9 @@
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_types::{account::AccountHash, ContractHash, Key, U256};
 use contract_utils::{get_key, key_and_value_to_str, key_to_str, set_key, Dict};
 
-use crate::{
-    structs::{Schedules, Time},
-    Error,
-};
+use crate::structs::{Schedules, Time};
 
 pub const ORDERS_DIC: &str = "orders";
 
@@ -74,16 +71,6 @@ pub fn set_creator(creator: AccountHash) {
 
 pub fn get_creator() -> AccountHash {
     get_key(CREATOR).unwrap_or_revert()
-}
-
-const MERKLE_ROOT: &str = "merkle_root";
-
-pub fn _set_merkle_root(root: String) {
-    set_key(MERKLE_ROOT, root);
-}
-
-pub fn _get_merkle_root() -> String {
-    get_key(MERKLE_ROOT).unwrap_or_revert_with(Error::InvalidMerkleRoot)
 }
 
 const AUCTION_START_TIME: &str = "auction_start_time";

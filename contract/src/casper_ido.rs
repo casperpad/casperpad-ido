@@ -1,9 +1,4 @@
-use alloc::{
-    collections::BTreeMap,
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, string::String};
 use casper_contract::{
     contract_api::{runtime, system},
     unwrap_or_revert::UnwrapOrRevert,
@@ -13,17 +8,16 @@ use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
     data::{
-        set_creator, set_schedules, Claims, Orders, _get_merkle_root, _get_sold_amount,
-        _get_total_participants, _get_treasury_wallet, _set_merkle_root, _set_sold_amount,
-        _set_total_participants, _set_treasury_wallet, get_auction_end_time,
-        get_auction_start_time, get_auction_token, get_auction_token_capacity,
-        get_auction_token_price, get_creator, get_pay_token, get_schedules, set_auction_end_time,
-        set_auction_start_time, set_auction_token, set_auction_token_capacity,
-        set_auction_token_price, set_pay_token,
+        set_creator, set_schedules, Claims, Orders, _get_sold_amount, _get_total_participants,
+        _get_treasury_wallet, _set_sold_amount, _set_total_participants, _set_treasury_wallet,
+        get_auction_end_time, get_auction_start_time, get_auction_token,
+        get_auction_token_capacity, get_auction_token_price, get_creator, get_pay_token,
+        get_schedules, set_auction_end_time, set_auction_start_time, set_auction_token,
+        set_auction_token_capacity, set_auction_token_price, set_pay_token,
     },
     enums::Address,
     event::{self, CasperIdoEvent},
-    libs::{conversion::u512_to_u256, merkle_tree},
+    libs::conversion::u512_to_u256,
     structs::{Schedules, Time},
     Error, IERC20,
 };
@@ -48,7 +42,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_auction_token_capacity(auction_token_capacity);
         set_pay_token(pay_token);
         set_schedules(schedules);
-        _set_merkle_root("".to_string());
         _set_total_participants(0);
         _set_sold_amount(U256::from(0));
         _set_treasury_wallet(treasury_wallet);
@@ -75,17 +68,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     }
 
     /// Create order, caller must be whitelisted and can create in sale time.
-    fn create_order(
-        &mut self,
-        caller: AccountHash,
-        tier: U256,
-        proof: Vec<(String, u8)>,
-        amount: U256,
-    ) {
-        // Check caller is whitelisted
-        let leaf = format!("{}_{:?}", caller.to_string(), tier);
-        merkle_tree::verify(self.merkle_root(), leaf, proof);
-
+    fn create_order(&mut self, caller: AccountHash, tier: U256, amount: U256) {
         // Check current time is between sale time
         self._assert_auction_time();
 
@@ -125,17 +108,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
 
-    fn create_order_cspr(
-        &mut self,
-        caller: AccountHash,
-        tier: U256,
-        proof: Vec<(String, u8)>,
-        deposit_purse: URef,
-    ) {
-        // Check caller is whitelisted
-        let leaf = format!("{}_{:?}", caller.to_string(), tier);
-        merkle_tree::verify(self.merkle_root(), leaf, proof);
-
+    fn create_order_cspr(&mut self, caller: AccountHash, tier: U256, deposit_purse: URef) {
         // Check current time is between auction time
         self._assert_auction_time();
 
@@ -218,11 +191,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Claims::instance().set(&Key::from(caller), schedule_time, true);
     }
 
-    /// Set merkle_root , only admin call
-    fn set_merkle_root(&mut self, merkle_root: String) {
-        _set_merkle_root(merkle_root);
-    }
-
     fn add_orders(&mut self, orders: BTreeMap<String, U256>) {
         orders.iter().enumerate().for_each(|order| {
             let user_order = order.1;
@@ -254,8 +222,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         auction_end_time: Time,
         schedules: Schedules,
     ) {
-        self._assert_before_auction_time();
-
         set_auction_start_time(auction_start_time);
         set_auction_end_time(auction_end_time);
         set_schedules(schedules);
@@ -283,10 +249,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     fn auction_token_price(&self) -> U256 {
         get_auction_token_price()
-    }
-
-    fn merkle_root(&self) -> String {
-        _get_merkle_root()
     }
 
     fn increase_sold_amount_and_participants(&self, amount: U256) {
