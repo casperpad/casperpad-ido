@@ -123,10 +123,11 @@ fn should_create_order_and_claim() {
         Address::from(ido_contract.contract_package_hash()),
         U256::from(5000u32).checked_mul(U256::exp10(9)).unwrap(),
     );
-
+    let auction_token_capacity = U256::from(5000u32).checked_mul(U256::exp10(9)).unwrap();
     ido_contract.set_auction_token(
         owner,
         erc20.contract_hash().to_formatted_string(),
+        auction_token_capacity,
         SystemTime::now()
             .checked_sub(Duration::from_secs(50000))
             .unwrap(),
@@ -239,6 +240,7 @@ fn should_create_order_and_claim_erc20() {
     ido_contract.set_auction_token(
         owner,
         erc20.contract_hash().to_formatted_string(),
+        auction_token_capacity,
         SystemTime::now()
             .checked_sub(Duration::from_secs(50000))
             .unwrap(),

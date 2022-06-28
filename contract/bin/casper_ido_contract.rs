@@ -145,8 +145,9 @@ pub extern "C" fn set_auction_token() {
         let auction_token_str: String = runtime::get_named_arg("auction_token");
         ContractHash::from_formatted_str(&auction_token_str).unwrap()
     };
+    let auction_token_capacity: U256 = runtime::get_named_arg("auction_token_capacity");
     CasperIdoContract::default().assert_caller_is_admin();
-    CasperIdoContract::default().set_auction_token(auction_token);
+    CasperIdoContract::default().set_auction_token(auction_token, auction_token_capacity);
 }
 
 #[no_mangle]
@@ -343,7 +344,10 @@ fn get_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(EntryPoint::new(
         "set_auction_token",
-        vec![Parameter::new("auction_token".to_string(), CLType::String)],
+        vec![
+            Parameter::new("auction_token".to_string(), CLType::String),
+            Parameter::new("auction_token_capacity".to_string(), CLType::U256),
+        ],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

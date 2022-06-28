@@ -1,11 +1,14 @@
 import { config } from "dotenv";
 // config();
-config({ path: ".env.test.local" });
+// config({ path: ".env.test.local" });
+config({ path: ".env.production.local" });
 import { CasperClient, Keys } from "casper-js-sdk";
-import { BigNumber, parseFixed } from "@ethersproject/bignumber";
+import { BigNumberish } from "@ethersproject/bignumber";
+
+import kunft from "./tiers/casper/kunft.json";
 
 import IDOClient from "./client/IDOClient";
-import { getAccountInfo, getAccountNamedKeyValue, getDeploy } from "./utils";
+import { getAccountNamedKeyValue, getDeploy } from "./utils";
 
 const {
   NODE_ADDRESS,
@@ -22,7 +25,7 @@ const public_key = Keys.Ed25519.privateToPublicKey(private_key);
 
 const KEYS = Keys.Ed25519.parseKeyPair(public_key, private_key);
 
-const addOrders = async () => {
+const changeTimeSchedules = async () => {
   const idoContract = new IDOClient(
     NODE_ADDRESS!,
     CHAIN_NAME!,
@@ -33,22 +36,28 @@ const addOrders = async () => {
   const idoContractHash = await getAccountNamedKeyValue(
     casperClient,
     KEYS.publicKey,
-    `casper_ido_contract_hash`
+    `KUNFT Marketplace_ido_contract_hash`
   );
 
   await idoContract.setContractHash(idoContractHash.slice(5));
-  const orders: Map<string, BigNumber> = new Map();
-  const account =
-    "account-hash-f2af240a5aa234d6e295ff65b011126dc002f655b1034f869f38b7b2ba60e450";
-  const amount = parseFixed("100", 9);
-  orders.set(account, amount);
-  const deployHash = await idoContract.addOrders(
+
+  const { startTime, endTime, schedules: schedulesInfo } = kunft.info;
+
+  const schedules = new Map<number, BigNumberish>([]);
+  schedulesInfo.forEach((schedule) => {
+    schedules.set(schedule.time, schedule.percent * 10 ** 2);
+  });
+
+  const deployHash = await idoContract.changeTimeSchedules(
     KEYS,
-    orders,
+    startTime,
+    endTime,
+    schedules,
     DEFAULT_RUN_ENTRYPOINT_PAYMENT!
   );
-  console.log({ deployHash });
-  await getDeploy(NODE_ADDRESS!, deployHash);
-};
 
-addOrders();
+  console.log(`changeTimeSchedules deploy hash: ${deployHash}`);
+  await getDeploy(NODE_ADDRESS!, deployHash);
+  console.log("changeTimeSchedules done");
+};
+changeTimeSchedules();

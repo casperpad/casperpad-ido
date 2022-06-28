@@ -51,12 +51,19 @@ impl CasperIdoInstance {
     }
 
     /// Admin must set auction token before first schedule
-    pub fn set_auction_token(&self, sender: AccountHash, auction_token: String, time: SystemTime) {
+    pub fn set_auction_token(
+        &self,
+        sender: AccountHash,
+        auction_token: String,
+        auction_token_capacity: U256,
+        time: SystemTime,
+    ) {
         self.0.call_contract_with_time(
             sender,
             "set_auction_token",
             runtime_args! {
-                "auction_token" => auction_token
+                "auction_token" => auction_token,
+                "auction_token_capacity" => auction_token_capacity
             },
             time,
         );

@@ -10,6 +10,7 @@ import {
   CLAccountHash,
   CLString,
   CLU256Type,
+  CLU64Type,
 } from "casper-js-sdk";
 import {
   CasperContractClient,
@@ -210,6 +211,37 @@ export default class IDOClient extends CasperContractClient {
     }
   }
 
+  public async changeTimeSchedules(
+    keys: Keys.AsymmetricKey,
+    auctionStartTime: number,
+    auctionEndTime: number,
+    schedules: Map<number, BigNumberish>,
+    paymentAmount: string,
+    ttl = DEFAULT_TTL
+  ) {
+    if (schedules.size === 0) {
+      throw Error("Map size muste be greater than zero");
+    }
+    const clMap = new CLMap([new CLU64Type(), new CLU256Type()]);
+    schedules.forEach((percent, time) => {
+      clMap.set(CLValueBuilder.u64(percent), CLValueBuilder.u256(time));
+    });
+
+    const runtimeArgs = RuntimeArgs.fromMap({
+      auction_start_time: CLValueBuilder.u64(auctionStartTime),
+      auction_end_time: CLValueBuilder.u64(auctionEndTime),
+      schedules: clMap,
+    });
+    console.log(runtimeArgs);
+    return await this.contractCall({
+      entryPoint: "change_time_schedules",
+      keys,
+      paymentAmount,
+      runtimeArgs,
+      ttl,
+    });
+  }
+
   public async setMerkleRoot(
     keys: Keys.AsymmetricKey,
     merkleRoot: string,
@@ -232,11 +264,13 @@ export default class IDOClient extends CasperContractClient {
   public async setAuctionToken(
     keys: Keys.AsymmetricKey,
     auctionToken: string,
+    auctionTokenCapacity: BigNumberish,
     paymentAmount: string,
     ttl = DEFAULT_TTL
   ) {
     const runtimeArgs = RuntimeArgs.fromMap({
       auction_token: CLValueBuilder.string(auctionToken),
+      auction_token_capacity: CLValueBuilder.u256(auctionTokenCapacity),
     });
 
     return await this.contractCall({

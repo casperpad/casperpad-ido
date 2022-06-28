@@ -1,6 +1,6 @@
 import { config } from "dotenv";
-// config();
-config({ path: ".env.test.local" });
+config();
+// config({ path: ".env.test.local" });
 import {
   CasperClient,
   CLAccountHash,
@@ -24,8 +24,6 @@ const public_key = Keys.Ed25519.privateToPublicKey(private_key);
 
 const KEYS = Keys.Ed25519.parseKeyPair(public_key, private_key);
 
-const DEFAULT_RUN_ENTRYPOINT_PAYMENT = "50000000000";
-
 const test = async () => {
   const idoContract = new IDOClient(
     NODE_ADDRESS!,
@@ -46,10 +44,8 @@ const test = async () => {
 
   const shedules = await idoContract.schedules();
   const payToken = await idoContract.payToken();
-  // const claim = await idoContract.claimOf(user);
-  const order = await idoContract.orderOf(user);
 
-  console.dir({ payToken, order }, { depth: null });
+  console.dir({ shedules }, { depth: null });
 };
 
 const testFactory = async () => {

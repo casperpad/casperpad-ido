@@ -1,12 +1,13 @@
 import { config } from "dotenv";
 // config();
-config({ path: ".env.test.local" });
+// config({ path: ".env.test.local" });
+config({ path: ".env.production.local" });
 import { Keys, CasperClient } from "casper-js-sdk";
 import { ERC20Client } from "casper-erc20-js-client";
 import { BigNumberish, parseFixed } from "@ethersproject/bignumber";
 import { getAccountNamedKeyValue, getDeploy } from "./utils";
 import IDOClient from "./client/IDOClient";
-import kunft from "./tiers/casper-test/kunft.json";
+import kunft from "./tiers/casper/kunft.json";
 
 const {
   NODE_ADDRESS,
@@ -76,7 +77,13 @@ const deployIDO = async () => {
   );
   const casperClient = new CasperClient(NODE_ADDRESS!);
 
-  const { token, schedules: schedulesInfo, startTime, endTime } = kunft.info;
+  const {
+    token,
+    schedules: schedulesInfo,
+    startTime,
+    endTime,
+    name,
+  } = kunft.info;
 
   const auctionTokenPrice = parseFixed(token.price.toString(), 9);
   const auctionTokenCapacity = parseFixed(
@@ -89,11 +96,11 @@ const deployIDO = async () => {
     schedules.set(schedule.time, schedule.percent * 10 ** 2);
   });
 
-  const treasuryWallet = KEYS.publicKey.toAccountHashStr();
+  const treasuryWallet = `account-hash-c3f7b56fcf432bd759c9f81ed32d34a46b9639175cf54192d97db11ddfc0b040`;
 
   const payToken = undefined; // payment is CSPR
 
-  const contractName = "casper_ido";
+  const contractName = `${name}_ido`;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
@@ -128,6 +135,8 @@ const deploy = async () => {
   await deployERC20();
   await deployIDO();
 };
+
+// deployERC20();
 
 deployIDO();
 

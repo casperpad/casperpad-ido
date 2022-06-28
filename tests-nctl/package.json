@@ -10,7 +10,8 @@
     "run-after-sale-action": "ts-node ./scripts/run-after-sale-action.ts",
     "install-contracts": "ts-node ./scripts/install-contracts.ts",
     "get-contract-values": "ts-node ./scripts/get-contract-values",
-    "convert-tier": "ts-node ./scripts/convert-tier",
+    "change-time-schedules": "ts-node ./scripts/change-time-schedules",
+    "convert-whitelist": "ts-node ./scripts/convert-whitelist",
     "deploy": "ts-node ./scripts/deploy.ts"
   },
   "keywords": [
