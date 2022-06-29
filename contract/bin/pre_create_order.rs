@@ -9,7 +9,7 @@ use casper_contract::{
     contract_api::{account, runtime, system},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{runtime_args, ContractHash, RuntimeArgs, U256, U512};
+use casper_types::{runtime_args, ContractHash, RuntimeArgs, U512};
 
 #[no_mangle]
 pub extern "C" fn call() {
@@ -17,7 +17,7 @@ pub extern "C" fn call() {
         let contract_hash_string: String = runtime::get_named_arg("ido_contract_hash");
         ContractHash::from_formatted_str(&contract_hash_string).unwrap()
     };
-    let tier: U256 = runtime::get_named_arg("tier");
+
     let amount: U512 = runtime::get_named_arg("amount");
 
     let deposit_purse = system::create_purse();
@@ -28,7 +28,6 @@ pub extern "C" fn call() {
         contract_hash,
         "create_order_cspr",
         runtime_args! {
-          "tier" => tier,
           "deposit_purse" => deposit_purse,
         },
     );

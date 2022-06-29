@@ -51,6 +51,8 @@ impl CasperIdoContract {
         pay_token: Option<ContractHash>,
         schedules: Schedules,
         treasury_wallet: AccountHash,
+        min_order_amount: U256,
+        max_order_amount: U256,
     ) {
         CasperIdo::init(
             self,
@@ -61,6 +63,8 @@ impl CasperIdoContract {
             pay_token,
             schedules,
             treasury_wallet,
+            min_order_amount,
+            max_order_amount,
         );
         AdminControl::init(self);
         ReentrancyGuard::init(self);
@@ -82,6 +86,8 @@ pub extern "C" fn constructor() {
         let treasury_wallet_str: String = runtime::get_named_arg("treasury_wallet");
         AccountHash::from_formatted_str(&treasury_wallet_str).unwrap()
     };
+    let min_order_amount: U256 = runtime::get_named_arg("min_order_amount");
+    let max_order_amount: U256 = runtime::get_named_arg("max_order_amount");
     CasperIdoContract::default().constructor(
         auction_start_time,
         auction_end_time,
@@ -90,6 +96,8 @@ pub extern "C" fn constructor() {
         pay_token,
         schedules,
         treasury_wallet,
+        min_order_amount,
+        max_order_amount,
     );
     let default_admin = runtime::get_caller();
     CasperIdoContract::default().add_admin_without_checked(Key::from(default_admin))
@@ -98,22 +106,20 @@ pub extern "C" fn constructor() {
 #[no_mangle]
 pub extern "C" fn create_order() {
     let caller = runtime::get_caller();
-    let tier: U256 = runtime::get_named_arg("tier");
-
     let amount: U256 = runtime::get_named_arg("amount");
+
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().create_order(caller, tier, amount);
+    CasperIdoContract::default().create_order(caller, amount);
     CasperIdoContract::default().clear_reentrancy();
 }
 
 #[no_mangle]
 pub extern "C" fn create_order_cspr() {
     let caller = runtime::get_caller();
-    let tier: U256 = runtime::get_named_arg("tier");
-
     let deposit_purse: URef = runtime::get_named_arg("deposit_purse");
+
     CasperIdoContract::default().set_reentrancy();
-    CasperIdoContract::default().create_order_cspr(caller, tier, deposit_purse);
+    CasperIdoContract::default().create_order_cspr(caller, deposit_purse);
     CasperIdoContract::default().clear_reentrancy();
 }
 
@@ -176,6 +182,16 @@ pub extern "C" fn change_time_schedules() {
 }
 
 #[no_mangle]
+pub extern "C" fn set_order_amount() {
+    let min_order_amount: U256 = runtime::get_named_arg("min_order_amount");
+    let max_order_amount: U256 = runtime::get_named_arg("max_order_amount");
+
+    CasperIdoContract::default().assert_caller_is_admin();
+    CasperIdoContract::default().set_min_order_amount(min_order_amount);
+    CasperIdoContract::default().set_max_order_amount(max_order_amount);
+}
+
+#[no_mangle]
 pub extern "C" fn add_admin() {
     let admin: AccountHash = {
         let admin_string: String = runtime::get_named_arg("admin");
@@ -203,6 +219,8 @@ pub extern "C" fn call() {
     let pay_token: Option<String> = runtime::get_named_arg("pay_token");
     let schedules: Schedules = runtime::get_named_arg("schedules");
     let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
+    let min_order_amount: U256 = runtime::get_named_arg("min_order_amount");
+    let max_order_amount: U256 = runtime::get_named_arg("max_order_amount");
     let (contract_hash, _) = storage::new_contract(
         get_entry_points(),
         None,
@@ -232,7 +250,9 @@ pub extern "C" fn call() {
         "auction_token_capacity" => auction_token_capacity,
         "pay_token" => pay_token,
         "schedules" => schedules,
-        "treasury_wallet" => treasury_wallet
+        "treasury_wallet" => treasury_wallet,
+        "min_order_amount" => min_order_amount,
+        "max_order_amount" => max_order_amount,
     };
     let _: () = runtime::call_contract(contract_hash, "constructor", constructor_args);
 
@@ -266,6 +286,8 @@ fn get_entry_points() -> EntryPoints {
                 },
             ),
             Parameter::new("treasury_wallet".to_string(), CLType::U64),
+            Parameter::new("min_order_amount".to_string(), CLType::U256),
+            Parameter::new("max_order_amount".to_string(), CLType::U256),
         ],
         CLType::Unit,
         EntryPointAccess::Groups(vec![Group::new("constructor")]),
@@ -372,6 +394,17 @@ fn get_entry_points() -> EntryPoints {
                     value: Box::new(CLType::U256),
                 },
             ),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "set_order_amount",
+        vec![
+            Parameter::new("min_order_amount".to_string(), CLType::U256),
+            Parameter::new("max_order_amount".to_string(), CLType::U256),
         ],
         CLType::Unit,
         EntryPointAccess::Public,

@@ -50,6 +50,8 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
     schedules.insert(since_the_epoch + 777777, U256::from(6000));
     let pay_token: Option<String> = None;
     let treasury_wallet = AccountHash::new([3u8; 32]).to_formatted_string();
+    let min_order_amount = U256::from(50).checked_mul(U256::exp10(9)).unwrap();
+    let max_order_amount = U256::from(500).checked_mul(U256::exp10(9)).unwrap();
     let casper_ido_instance = CasperIdoInstance::new(
         &env,
         "casper_ido",
@@ -61,6 +63,8 @@ fn deploy() -> (TestEnv, TestContext, AccountHash) {
         pay_token,
         schedules,
         treasury_wallet,
+        min_order_amount,
+        max_order_amount,
     );
 
     let test_context = TestContext {
@@ -112,8 +116,7 @@ fn should_create_order_and_claim() {
 
     env.next_user();
     let user = env.next_user();
-    let tier = U256::from(2u8).checked_mul(U256::exp10(18)).unwrap();
-    let amount = U512::from(50u8).checked_mul(U512::exp10(9)).unwrap();
+    let amount = U512::from(50u64).checked_mul(U512::exp10(9)).unwrap();
 
     let new_treasury_wallet = AccountHash::new([4u8; 32]);
     ido_contract.set_treasury_wallet(owner, new_treasury_wallet.to_formatted_string());
@@ -124,7 +127,6 @@ fn should_create_order_and_claim() {
         DeploySource::Code(session_code),
         runtime_args! {
             "ido_contract_hash" => ido_contract.contract_hash().to_formatted_string(),
-            "tier" => tier,
             "amount" => amount
         },
         SystemTime::now()
@@ -184,6 +186,8 @@ fn should_create_order_and_claim_erc20() {
 
     let pay_token_str: Option<String> = Some(pay_token.contract_hash().to_formatted_string());
     let treasury_wallet = AccountHash::new([3u8; 32]).to_formatted_string();
+    let min_order_amount = U256::from(50).checked_mul(U256::exp10(9)).unwrap();
+    let max_order_amount = U256::from(500).checked_mul(U256::exp10(9)).unwrap();
     let casper_ido_instance = CasperIdoInstance::new(
         &env,
         "casper_ido",
@@ -195,6 +199,8 @@ fn should_create_order_and_claim_erc20() {
         pay_token_str,
         schedules,
         treasury_wallet,
+        min_order_amount,
+        max_order_amount,
     );
     let ido_contract = casper_ido_instance;
 
@@ -221,7 +227,7 @@ fn should_create_order_and_claim_erc20() {
 
     env.next_user();
     let user = env.next_user();
-    let tier = U256::from(2u8).checked_mul(U256::exp10(18)).unwrap();
+
     let amount = U256::from(50u8).checked_mul(U256::exp10(9)).unwrap();
 
     pay_token.transfer(owner, Address::from(user), amount);
@@ -234,7 +240,6 @@ fn should_create_order_and_claim_erc20() {
 
     ido_contract.create_order(
         user,
-        tier,
         amount,
         SystemTime::now()
             .checked_add(Duration::from_secs(20000))

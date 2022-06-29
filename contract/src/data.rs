@@ -123,6 +123,26 @@ pub fn get_auction_token_capacity() -> U256 {
     get_key(AUCTION_TOKEN_CAPACITY).unwrap_or_revert()
 }
 
+const MAX_ORDER_AMOUNT: &str = "max_order_amount";
+
+pub fn _set_max_order_amount(amount: U256) {
+    set_key(MAX_ORDER_AMOUNT, amount);
+}
+
+pub fn _get_max_order_amount() -> U256 {
+    get_key(MAX_ORDER_AMOUNT).unwrap_or_revert()
+}
+
+const MIN_ORDER_AMOUNT: &str = "min_order_amount";
+
+pub fn _set_min_order_amount(amount: U256) {
+    set_key(MIN_ORDER_AMOUNT, amount);
+}
+
+pub fn _get_min_order_amount() -> U256 {
+    get_key(MIN_ORDER_AMOUNT).unwrap_or_revert()
+}
+
 const PAY_TOKEN: &str = "pay_token";
 
 pub fn set_pay_token(pay_token: Option<ContractHash>) {

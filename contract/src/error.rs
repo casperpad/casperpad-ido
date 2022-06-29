@@ -34,7 +34,7 @@ pub enum Error {
     InvalidPayToken = 55,
     InvalidMerkleRoot = 56,
     AlreadySettedToken = 57,
-
+    InvalidOrderAmount = 58,
     // Contract Error
     InvalidContext = 90,
     KeyAlreadyExists = 91,

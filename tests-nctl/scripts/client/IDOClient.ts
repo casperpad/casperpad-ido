@@ -55,6 +55,8 @@ export default class IDOClient extends CasperContractClient {
     auctionTokenCapacity: BigNumberish,
     schedules: Map<number, BigNumberish>,
     treasuryWallet: string,
+    minOrderAmount: BigNumberish,
+    maxOrderAmount: BigNumberish,
     paymentAmount: string,
     wasmPath: string,
     payToken?: string
@@ -80,6 +82,8 @@ export default class IDOClient extends CasperContractClient {
         : CLValueBuilder.option(None, new CLStringType()),
       schedules: clMap,
       treasury_wallet: CLValueBuilder.string(treasuryWallet),
+      min_order_amount: CLValueBuilder.u256(minOrderAmount),
+      max_order_amount: CLValueBuilder.u256(maxOrderAmount),
     });
 
     return await installContract(

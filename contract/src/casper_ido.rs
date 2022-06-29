@@ -8,8 +8,9 @@ use contract_utils::{ContractContext, ContractStorage};
 
 use crate::{
     data::{
-        set_creator, set_schedules, Claims, Orders, _get_sold_amount, _get_total_participants,
-        _get_treasury_wallet, _set_sold_amount, _set_total_participants, _set_treasury_wallet,
+        set_creator, set_schedules, Claims, Orders, _get_max_order_amount, _get_min_order_amount,
+        _get_sold_amount, _get_total_participants, _get_treasury_wallet, _set_max_order_amount,
+        _set_min_order_amount, _set_sold_amount, _set_total_participants, _set_treasury_wallet,
         get_auction_end_time, get_auction_start_time, get_auction_token,
         get_auction_token_capacity, get_auction_token_price, get_creator, get_pay_token,
         get_schedules, set_auction_end_time, set_auction_start_time, set_auction_token,
@@ -32,6 +33,8 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         pay_token: Option<ContractHash>,
         schedules: Schedules,
         treasury_wallet: AccountHash,
+        min_order_amount: U256,
+        max_order_amount: U256,
     ) {
         set_creator(runtime::get_caller());
         set_auction_start_time(auction_start_time);
@@ -45,6 +48,9 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         _set_total_participants(0);
         _set_sold_amount(U256::from(0));
         _set_treasury_wallet(treasury_wallet);
+        _set_min_order_amount(min_order_amount);
+        _set_max_order_amount(max_order_amount);
+
         Orders::init();
         Claims::init();
     }
@@ -68,7 +74,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     }
 
     /// Create order, caller must be whitelisted and can create in sale time.
-    fn create_order(&mut self, caller: AccountHash, tier: U256, amount: U256) {
+    fn create_order(&mut self, caller: AccountHash, amount: U256) {
         // Check current time is between sale time
         self._assert_auction_time();
 
@@ -89,15 +95,17 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
             }
         };
 
-        // Check order amount is less than tier
+        // Check order amount is less than max
         let exist_order_amount = Orders::instance()
             .get(&Key::from(caller))
             .unwrap_or(U256::zero());
 
         let unchecked_new_order_amount = order_amount.checked_add(exist_order_amount).unwrap();
 
-        if tier.lt(&unchecked_new_order_amount) {
-            runtime::revert(Error::OutOfTier);
+        if unchecked_new_order_amount.lt(&self.min_order_amount())
+            || unchecked_new_order_amount.gt(&self.max_order_amount())
+        {
+            runtime::revert(Error::InvalidOrderAmount);
         }
 
         if exist_order_amount.eq(&U256::zero()) {
@@ -108,7 +116,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         Orders::instance().set(&Key::from(caller), unchecked_new_order_amount);
     }
 
-    fn create_order_cspr(&mut self, caller: AccountHash, tier: U256, deposit_purse: URef) {
+    fn create_order_cspr(&mut self, caller: AccountHash, deposit_purse: URef) {
         // Check current time is between auction time
         self._assert_auction_time();
 
@@ -140,9 +148,12 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
         let unchecked_new_order_amount = order_amount.checked_add(exist_order_amount).unwrap();
 
-        if tier.lt(&unchecked_new_order_amount) {
-            runtime::revert(Error::OutOfTier);
+        if unchecked_new_order_amount.lt(&self.min_order_amount())
+            || unchecked_new_order_amount.gt(&self.max_order_amount())
+        {
+            runtime::revert(Error::InvalidOrderAmount);
         }
+
         if exist_order_amount.eq(&U256::zero()) {
             self.increase_sold_amount_and_participants(order_amount);
         } else {
@@ -225,6 +236,22 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         set_auction_start_time(auction_start_time);
         set_auction_end_time(auction_end_time);
         set_schedules(schedules);
+    }
+
+    fn set_min_order_amount(&mut self, amount: U256) {
+        _set_min_order_amount(amount);
+    }
+
+    fn set_max_order_amount(&mut self, amount: U256) {
+        _set_max_order_amount(amount);
+    }
+
+    fn min_order_amount(&self) -> U256 {
+        _get_min_order_amount()
+    }
+
+    fn max_order_amount(&self) -> U256 {
+        _get_max_order_amount()
     }
 
     fn set_treasury_wallet(&mut self, treasury_wallet: AccountHash) {

@@ -24,6 +24,8 @@ impl CasperIdoInstance {
         pay_token: Option<String>,
         schedules: Schedules,
         treasury_wallet: String,
+        min_order_amount: U256,
+        max_order_amount: U256,
     ) -> CasperIdoInstance {
         CasperIdoInstance(TestContract::new(
             env,
@@ -37,7 +39,9 @@ impl CasperIdoInstance {
                 "auction_token_capacity" => auction_token_capacity,
                 "pay_token" => pay_token,
                 "schedules" => schedules,
-                "treasury_wallet" => treasury_wallet
+                "treasury_wallet" => treasury_wallet,
+                "min_order_amount" => min_order_amount,
+                "max_order_amount" => max_order_amount
             },
         ))
     }
@@ -109,12 +113,11 @@ impl CasperIdoInstance {
         );
     }
 
-    pub fn create_order(&self, sender: AccountHash, tier: U256, amount: U256, time: SystemTime) {
+    pub fn create_order(&self, sender: AccountHash, amount: U256, time: SystemTime) {
         self.0.call_contract_with_time(
             sender,
             "create_order",
             runtime_args! {
-                "tier" => tier,
                 "amount" => amount
             },
             time,
