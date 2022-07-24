@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 // config();
-// config({ path: ".env.test.local" });
-config({ path: ".env.production.local" });
+config({ path: ".env.test.local" });
+// config({ path: ".env.production.local" });
 import {
   CasperClient,
   CLValueBuilder,
@@ -10,10 +10,9 @@ import {
 } from "casper-js-sdk";
 import { parseFixed } from "@ethersproject/bignumber";
 import { ERC20Client } from "casper-erc20-js-client";
-import { MerkleTree } from "merkletreejs";
-import keccak256 from "keccak256";
 
-import kunft from "./tiers/casper/kunft.json";
+// import kunft from "./tiers/casper/kunft.json";
+import kunft from "./tiers/casper-test/kunft.json";
 
 import IDOClient from "./client/IDOClient";
 import { getAccountNamedKeyValue, getDeploy } from "./utils";
@@ -33,24 +32,6 @@ const public_key = Keys.Ed25519.privateToPublicKey(private_key);
 
 const KEYS = Keys.Ed25519.parseKeyPair(public_key, private_key);
 
-function test_net_tiers() {
-  return kunft.investors.map((investor) => {
-    return {
-      account: investor.accountHash,
-      amount: kunft.tier[investor.tier],
-    };
-  });
-}
-
-export const genMerkleTree = () => {
-  const tiers = test_net_tiers();
-  const elements = tiers.map((tier) => `${tier.account}_${tier.amount}`);
-  const leaves = elements.map(keccak256);
-  const tree = new MerkleTree(leaves, keccak256);
-  const root = tree.getHexRoot();
-  return root;
-};
-
 const setAuctionToken = async () => {
   const idoContract = new IDOClient(
     NODE_ADDRESS!,
@@ -59,11 +40,15 @@ const setAuctionToken = async () => {
   );
   const casperClient = new CasperClient(NODE_ADDRESS!);
 
+  const { name: idoName } = kunft.info;
+
   const idoContractHash = await getAccountNamedKeyValue(
     casperClient,
     KEYS.publicKey,
-    `casper_ido_contract_hash`
+    `${idoName}_ido_contract_hash`
   );
+
+  console.log({ idoContractHash });
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
@@ -79,13 +64,18 @@ const setAuctionToken = async () => {
     `${name}_contract_hash`
   );
 
+  console.log({ erc20ContractHash });
+
   await erc20.setContractHash(erc20ContractHash.slice(5));
 
-  const idoContractPackageHash = await getAccountNamedKeyValue(
+  let idoContractPackageHash = await getAccountNamedKeyValue(
     casperClient,
     KEYS.publicKey,
-    `casper_ido_contract_package_hash`
+    `KUNFT Marketplace_ido_contract_package_hash`
   );
+
+  console.log({ idoContractPackageHash });
+
   const auctionTokenCapacity = parseFixed(capacity.toString(), decimals);
   let deployHash = await erc20.approve(
     KEYS,
@@ -112,3 +102,5 @@ const setAuctionToken = async () => {
 const runPresaleActions = async () => {
   await setAuctionToken();
 };
+
+runPresaleActions();

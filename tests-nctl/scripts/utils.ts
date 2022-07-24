@@ -1,9 +1,5 @@
 import { sleep } from "casper-js-client-helper/dist/helpers/utils";
-import {
-  CasperClient,
-  CLPublicKey,
-  Keys
-} from "casper-js-sdk";
+import { CasperClient, CLPublicKey, Keys } from "casper-js-sdk";
 import * as fs from "fs";
 const { Ed25519, AsymmetricKey } = Keys;
 import _ from "lodash";
@@ -18,7 +14,7 @@ export const getAccountHash = (keyPair: Keys.AsymmetricKey): string => {
 };
 
 interface AccountInfo {
-  namedKeys: any
+  namedKeys: any;
 }
 
 /**
@@ -27,7 +23,10 @@ interface AccountInfo {
  * @param {Object} publicKey - Assymmetric keys of an on-chain account.
  * @return {Object} On-chain account information.
  */
-export const getAccountInfo = async (client: CasperClient, publicKey: CLPublicKey): Promise<AccountInfo> => {
+export const getAccountInfo = async (
+  client: CasperClient,
+  publicKey: CLPublicKey
+): Promise<AccountInfo> => {
   const accountHash = publicKey.toAccountHashStr();
   const stateRootHash = await client.nodeClient.getStateRootHash();
   const { Account: accountInfo } = await client.nodeClient.getBlockState(
@@ -66,10 +65,10 @@ export const getAccountNamedKeyValue = async (
  * @param client - JS SDK client for interacting with a node.
  * @return Root hash of global state at most recent block.
  */
-export const getStateRootHash = async (client: CasperClient): Promise<string> => {
-  const {
-    block
-  } = await client.nodeClient.getLatestBlockInfo();
+export const getStateRootHash = async (
+  client: CasperClient
+): Promise<string> => {
+  const { block } = await client.nodeClient.getLatestBlockInfo();
   const {
     header: { state_root_hash: stateRootHash },
   } = block!;
@@ -85,7 +84,6 @@ export const getBinary = (pathToBinary: string): Uint8Array => {
   return new Uint8Array(fs.readFileSync(pathToBinary, null).buffer);
 };
 
-
 export const getDeploy = async (NODE_URL: string, deployHash: string) => {
   const client = new CasperClient(NODE_URL);
   let i = 300;
@@ -99,8 +97,8 @@ export const getDeploy = async (NODE_URL: string, deployHash: string) => {
         // @ts-ignore
         throw Error(
           "Contract execution: " +
-          // @ts-ignore
-          raw.execution_results[0].result.Failure.error_message
+            // @ts-ignore
+            raw.execution_results[0].result.Failure.error_message
         );
       }
     } else {
@@ -111,5 +109,3 @@ export const getDeploy = async (NODE_URL: string, deployHash: string) => {
   }
   throw Error("Timeout after " + i + "s. Something's wrong");
 };
-
-

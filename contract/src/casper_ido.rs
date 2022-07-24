@@ -62,7 +62,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
 
     fn set_auction_token(&mut self, auction_token: ContractHash, auction_token_capacity: U256) {
         self._asert_null_auction_token();
-        self._assert_before_first_shedule_time();
         set_auction_token_capacity(auction_token_capacity);
         let auction_creator = get_creator();
         IERC20::new(auction_token).transfer_from(

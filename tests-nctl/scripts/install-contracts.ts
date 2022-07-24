@@ -1,14 +1,14 @@
 import { config } from "dotenv";
 // config();
-config({ path: ".env.test.local" });
-// config({ path: ".env.production.local" });
+// config({ path: ".env.test.local" });
+config({ path: ".env.production.local" });
 import { Keys, CasperClient } from "casper-js-sdk";
 import { ERC20Client } from "casper-erc20-js-client";
 import { BigNumberish, parseFixed } from "@ethersproject/bignumber";
 import { getAccountNamedKeyValue, getDeploy } from "./utils";
 import IDOClient from "./client/IDOClient";
-// import kunft from "./tiers/casper/kunft.json";
-import kunft from "./tiers/casper-test/kunft.json";
+import kunft from "./tiers/casper/kunft.json";
+// import kunft from "./tiers/casper-test/kunft.json";
 
 const {
   NODE_ADDRESS,
@@ -99,12 +99,12 @@ const deployIDO = async () => {
 
   const treasuryWallet = `account-hash-74930c304adf4f2fc24b320788ecac8c0dcba38817b0e636b5b0fd85279d56a0`;
 
-  const minOrderAmount = "800";
-  const maxOrderAmount = "160000";
+  const minOrderAmount = parseFixed(kunft.minOrderAmount, 9);
+  const maxOrderAmount = parseFixed(kunft.maxOrderAmount, 9);
 
   const payToken = undefined; // payment is CSPR
 
-  const contractName = `${name}_ido`;
+  const contractName = `${name}_open_ido`;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
