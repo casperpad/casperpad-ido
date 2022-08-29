@@ -1,7 +1,6 @@
 import { config } from "dotenv";
-// config();
+config();
 // config({ path: ".env.test.local" });
-config({ path: ".env.production.local" });
 import { CasperClient, Keys } from "casper-js-sdk";
 import { BigNumberish } from "@ethersproject/bignumber";
 
@@ -33,11 +32,8 @@ const changeTimeSchedules = async () => {
   );
   const casperClient = new CasperClient(NODE_ADDRESS!);
 
-  const idoContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `KUNFT Marketplace_ido_contract_hash`
-  );
+  const idoContractHash =
+    "hash-74764b918573d0572fe949c434c295204d4d4afa70e067b9bb21082306da8e87";
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
@@ -47,13 +43,14 @@ const changeTimeSchedules = async () => {
   schedulesInfo.forEach((schedule) => {
     schedules.set(schedule.time, schedule.percent * 10 ** 2);
   });
+  console.dir(schedules, { depth: null });
 
   const deployHash = await idoContract.changeTimeSchedules(
     KEYS,
     startTime,
     endTime,
     schedules,
-    DEFAULT_RUN_ENTRYPOINT_PAYMENT!
+    "100000000"
   );
 
   console.log(`changeTimeSchedules deploy hash: ${deployHash}`);

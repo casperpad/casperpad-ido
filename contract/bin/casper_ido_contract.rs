@@ -2,9 +2,6 @@
 #![no_main]
 #![feature(default_alloc_error_handler)]
 
-#[cfg(not(target_arch = "wasm32"))]
-compile_error!("target arch should be wasm32: compile with '--target wasm32-unknown-unknown'");
-
 // We need to explicitly import the std alloc crate and `alloc::string::String` as we're in a
 // `no_std` environment.
 extern crate alloc;
@@ -73,7 +70,6 @@ impl CasperIdoContract {
 
 #[no_mangle]
 pub extern "C" fn constructor() {
-    let creator = runtime::get_caller();
     let auction_start_time: Time = runtime::get_named_arg("auction_start_time");
     let auction_end_time: Time = runtime::get_named_arg("auction_end_time");
     let auction_token_price: U256 = runtime::get_named_arg("auction_token_price");
@@ -218,11 +214,8 @@ pub extern "C" fn call() {
     let (contract_hash, _) = storage::new_contract(
         get_entry_points(),
         None,
-        Some(String::from(format!(
-            "{}_contract_package_hash",
-            contract_name
-        ))),
-        None,
+        Some(format!("{}_contract_package_hash", contract_name)),
+        Some(format!("{}_contract_access_token", contract_name)),
     );
 
     let package_hash: ContractPackageHash = ContractPackageHash::new(

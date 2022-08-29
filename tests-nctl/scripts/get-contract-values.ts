@@ -9,6 +9,7 @@ import {
   Keys,
 } from "casper-js-sdk";
 import { ERC20Client } from "casper-erc20-js-client";
+import kunft from "./tiers/casper/kunft.json";
 
 import IDOClient from "./client/IDOClient";
 import { getAccountNamedKeyValue } from "./utils";
@@ -17,12 +18,9 @@ import FactoryClient from "./client/FactoryClient";
 const { NODE_ADDRESS, EVENT_STREAM_ADDRESS, CHAIN_NAME, MASTER_KEY_PAIR_PATH } =
   process.env;
 
-const private_key = Keys.Ed25519.parsePrivateKeyFile(
+const KEYS = Keys.Ed25519.loadKeyPairFromPrivateFile(
   `${MASTER_KEY_PAIR_PATH}/secret_key.pem`
 );
-const public_key = Keys.Ed25519.privateToPublicKey(private_key);
-
-const KEYS = Keys.Ed25519.parseKeyPair(public_key, private_key);
 
 const test = async () => {
   const idoContract = new IDOClient(
@@ -31,11 +29,8 @@ const test = async () => {
     EVENT_STREAM_ADDRESS!
   );
   const casperClient = new CasperClient(NODE_ADDRESS!);
-  const idoContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `casper_ido_contract_hash`
-  );
+  const idoContractHash =
+    "hash-74764b918573d0572fe949c434c295204d4d4afa70e067b9bb21082306da8e87";
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
@@ -46,25 +41,6 @@ const test = async () => {
   const payToken = await idoContract.payToken();
 
   console.dir({ shedules }, { depth: null });
-};
-
-const testFactory = async () => {
-  const factoryContract = new FactoryClient(
-    NODE_ADDRESS!,
-    CHAIN_NAME!,
-    EVENT_STREAM_ADDRESS!
-  );
-  const casperClient = new CasperClient(NODE_ADDRESS!);
-  const factoryContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `ido_factory_contract_hash`
-  );
-  await factoryContract.setContractHash(factoryContractHash.slice(5));
-
-  const installTime = await factoryContract.installTime();
-
-  console.log(installTime.toString());
 };
 
 const testERC20 = async () => {
@@ -104,8 +80,27 @@ const testERC20 = async () => {
   }
 };
 
-test();
+const fetchOrdersOfWhitelistedUsers = async () => {
+  const idoContract = new IDOClient(
+    NODE_ADDRESS!,
+    CHAIN_NAME!,
+    EVENT_STREAM_ADDRESS!
+  );
+  const casperClient = new CasperClient(NODE_ADDRESS!);
+  const idoContractHash =
+    "hash-74764b918573d0572fe949c434c295204d4d4afa70e067b9bb21082306da8e87";
 
-testERC20();
+  await idoContract.setContractHash(idoContractHash.slice(5));
 
-// testFactory();
+  const user =
+    "account-hash-f2af240a5aa234d6e295ff65b011126dc002f655b1034f869f38b7b2ba60e450";
+
+  const promises = kunft.investors.map(async (hash) => {
+    const amount = await idoContract.orderOf(`${hash.accountHash}`);
+    if (amount)
+      console.dir({ accountHash: hash.accountHash, amount }, { depth: null });
+  });
+  await Promise.all(promises);
+};
+
+fetchOrdersOfWhitelistedUsers();

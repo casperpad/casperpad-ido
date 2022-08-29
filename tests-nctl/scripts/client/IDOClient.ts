@@ -200,12 +200,15 @@ export default class IDOClient extends CasperContractClient {
     }
   }
 
-  public async orderOf(account: string): Promise<Some<CLU256> | undefined> {
+  public async orderOf(account: string): Promise<BigNumberish | undefined> {
     try {
       const preferKey = account.startsWith("account-hash-")
         ? account.slice(13)
         : account;
-      return await this.queryContractDictionary("orders", preferKey);
+      const some = await this.queryContractDictionary("orders", preferKey);
+      const parsed = (some as Some<CLU256>).val;
+
+      return parsed.value().toString();
     } catch (error: any) {
       return undefined;
     }
@@ -224,7 +227,7 @@ export default class IDOClient extends CasperContractClient {
     }
     const clMap = new CLMap([new CLU64Type(), new CLU256Type()]);
     schedules.forEach((percent, time) => {
-      clMap.set(CLValueBuilder.u64(percent), CLValueBuilder.u256(time));
+      clMap.set(CLValueBuilder.u64(time), CLValueBuilder.u256(percent));
     });
 
     const runtimeArgs = RuntimeArgs.fromMap({
@@ -232,7 +235,7 @@ export default class IDOClient extends CasperContractClient {
       auction_end_time: CLValueBuilder.u64(auctionEndTime),
       schedules: clMap,
     });
-    console.log(runtimeArgs);
+
     return await this.contractCall({
       entryPoint: "change_time_schedules",
       keys,
