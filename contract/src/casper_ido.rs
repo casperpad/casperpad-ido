@@ -83,7 +83,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         amount: U256,
     ) {
         // Check caller is whitelisted
-        let leaf = format!("{}_{:?}", caller.to_string(), tier);
+        let leaf = format!("{}_{:?}", caller, tier);
         merkle_tree::verify(self.merkle_root(), leaf, proof);
 
         // Check current time is between sale time
@@ -133,7 +133,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         deposit_purse: URef,
     ) {
         // Check caller is whitelisted
-        let leaf = format!("{}_{:?}", caller.to_string(), tier);
+        let leaf = format!("{}_{:?}", caller, tier);
         merkle_tree::verify(self.merkle_root(), leaf, proof);
 
         // Check current time is between auction time
@@ -334,7 +334,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         let schedules = get_schedules();
         let first_time = schedules.keys().min().unwrap();
 
-        if time.gt(&first_time) {
+        if time.gt(first_time) {
             runtime::revert(Error::InvalidTime);
         }
     }

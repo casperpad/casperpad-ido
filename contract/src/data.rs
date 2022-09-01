@@ -184,7 +184,7 @@ pub fn _set_fee_denominator(fee_denominator: U256) {
 }
 
 pub fn _get_fee_denominator() -> U256 {
-    get_key(FEE_DENOMINATOR).unwrap_or(U256::exp10(4))
+    get_key(FEE_DENOMINATOR).unwrap_or_else(|| U256::exp10(4))
 }
 
 const TREASURY_WALLET: &str = "treasury_wallet";
