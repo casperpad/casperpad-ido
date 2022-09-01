@@ -24,8 +24,9 @@ use casper_ido_contract::{
 };
 
 use casper_types::{
-    account::AccountHash, runtime_args, CLType, ContractHash, ContractPackageHash, EntryPoint,
-    EntryPointAccess, EntryPointType, EntryPoints, Group, Key, Parameter, RuntimeArgs, URef, U256,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, ContractHash,
+    ContractPackageHash, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Group, Key,
+    Parameter, RuntimeArgs, URef, U256,
 };
 use contract_utils::{AdminControl, ContractContext, OnChainContractStorage, ReentrancyGuard};
 
@@ -211,12 +212,25 @@ pub extern "C" fn call() {
     let pay_token: Option<String> = runtime::get_named_arg("pay_token");
     let schedules: Schedules = runtime::get_named_arg("schedules");
     let treasury_wallet: String = runtime::get_named_arg("treasury_wallet");
-    let (contract_hash, _) = storage::new_contract(
-        get_entry_points(),
-        None,
-        Some(format!("{}_contract_package_hash", contract_name)),
-        Some(format!("{}_contract_access_token", contract_name)),
-    );
+    let exist_contract_package_hash: Option<ContractPackageHash> = {
+        let contract_package_hash_str: Option<String> =
+            runtime::get_named_arg("contract_package_hash");
+        contract_package_hash_str.map(|str| ContractPackageHash::from_formatted_str(&str).unwrap())
+    };
+
+    let (contract_hash, _) = match exist_contract_package_hash {
+        Some(contract_package_hash) => {
+            let named_keys = NamedKeys::new();
+
+            storage::add_contract_version(contract_package_hash, get_entry_points(), named_keys)
+        }
+        None => storage::new_contract(
+            get_entry_points(),
+            None,
+            Some(format!("{}_contract_package_hash", contract_name)),
+            Some(format!("{}_contract_access_token", contract_name)),
+        ),
+    };
 
     let package_hash: ContractPackageHash = ContractPackageHash::new(
         runtime::get_key(&format!("{}_contract_package_hash", contract_name))
@@ -224,11 +238,18 @@ pub extern "C" fn call() {
             .into_hash()
             .unwrap_or_revert(),
     );
-    let constructor_access: URef =
-        storage::create_contract_user_group(package_hash, "constructor", 1, Default::default())
-            .unwrap_or_revert()
-            .pop()
-            .unwrap_or_revert();
+    let constructor_access: URef = match exist_contract_package_hash {
+        Some(contract_package_hash) => {
+            storage::provision_contract_user_group_uref(contract_package_hash, "constructor")
+                .unwrap()
+        }
+        None => {
+            storage::create_contract_user_group(package_hash, "constructor", 1, Default::default())
+                .unwrap_or_revert()
+                .pop()
+                .unwrap_or_revert()
+        }
+    };
 
     let constructor_args = runtime_args! {
         "auction_start_time" => auction_start_time,

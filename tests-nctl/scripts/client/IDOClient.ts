@@ -77,6 +77,7 @@ export default class IDOClient extends CasperContractClient {
     treasuryWallet: string,
     paymentAmount: string,
     wasmPath: string,
+    contractPackageHash?: string,
     payToken?: string
   ) {
     if (schedules.size === 0) {
@@ -100,6 +101,11 @@ export default class IDOClient extends CasperContractClient {
         : CLValueBuilder.option(None, new CLStringType()),
       schedules: clMap,
       treasury_wallet: CLValueBuilder.string(treasuryWallet),
+      contract_package_hash: contractPackageHash
+        ? CLValueBuilder.option(
+            Some(CLValueBuilder.string(contractPackageHash))
+          )
+        : CLValueBuilder.option(None, new CLStringType()),
     });
 
     return await installContract(

@@ -25,6 +25,7 @@ impl CasperIdoInstance {
         schedules: Schedules,
         treasury_wallet: String,
     ) -> CasperIdoInstance {
+        let exist_version: Option<String> = None;
         CasperIdoInstance(TestContract::new(
             env,
             "casper_ido_contract.wasm",
@@ -37,7 +38,9 @@ impl CasperIdoInstance {
                 "auction_token_capacity" => auction_token_capacity,
                 "pay_token" => pay_token,
                 "schedules" => schedules,
-                "treasury_wallet" => treasury_wallet
+                "treasury_wallet" => treasury_wallet,
+                "contract_package_hash" => exist_version
+
             },
         ))
     }

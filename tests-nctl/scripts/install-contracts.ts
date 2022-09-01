@@ -1,7 +1,6 @@
 import { config } from "dotenv";
 // config();
-// config({ path: ".env.test.local" });
-config({ path: ".env.production.local" });
+config({ path: ".env.test.local" });
 import { Keys, CasperClient } from "casper-js-sdk";
 import { ERC20Client } from "casper-erc20-js-client";
 import { BigNumberish, parseFixed } from "@ethersproject/bignumber";
@@ -101,6 +100,8 @@ const deployIDO = async () => {
   const payToken = undefined; // payment is CSPR
 
   const contractName = `${name}_ido`;
+  // const contractPackageHash = `contract-package-wasm7d7896b8e0f04f6c54904f834427be1fe8b0f5acdadb27e32c44051e35cb193c`;
+  const contractPackageHash = undefined;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
@@ -113,6 +114,7 @@ const deployIDO = async () => {
     treasuryWallet,
     INSTALL_PAYMENT_AMOUNT!,
     IDO_CONTRACT!,
+    contractPackageHash,
     payToken
   );
 

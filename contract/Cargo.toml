@@ -26,20 +26,11 @@ doctest = false
 test = false
 
 [[bin]]
-name = "factory_contract"
-path = "bin/factory_contract.rs"
-bench = false
-doctest = false
-test = false
-
-[[bin]]
 name = "pre_create_order"
 path = "bin/pre_create_order.rs"
 bench = false
 doctest = false
 test = false
-
-
 
 [profile.release]
 codegen-units = 1
