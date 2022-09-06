@@ -243,6 +243,7 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         });
     }
 
+    /// `price` is given in 1TK=2 * 10 ** 9 CSPR format
     fn change_auction_token_price(&mut self, price: U256) {
         self._assert_before_auction_time();
         set_auction_token_price(price);
