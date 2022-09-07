@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 // config();
-// config({ path: ".env.test.local" });
-config({ path: ".env.production.local" });
+config({ path: ".env.test.local" });
+// config({ path: ".env.production.local" });
 import {
   CasperClient,
   CLValueBuilder,
@@ -57,13 +57,9 @@ const setAuctionToken = async () => {
     CHAIN_NAME!,
     EVENT_STREAM_ADDRESS!
   );
-  const casperClient = new CasperClient(NODE_ADDRESS!);
 
-  const idoContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `casper_ido_contract_hash`
-  );
+  const idoContractHash =
+    "hash-f86ccc2fb216ac512ddb44c42208cb86b7f75bf260f4505246def86d014a3c11";
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
@@ -72,26 +68,21 @@ const setAuctionToken = async () => {
     CHAIN_NAME!,
     EVENT_STREAM_ADDRESS!
   );
-  const { name, capacity, decimals } = kunft.info.token;
-  const erc20ContractHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `${name}_contract_hash`
-  );
+
+  const erc20ContractHash =
+    "hash-91b9d48a4d24d4b82eb68b566b357568f5d5e1e8b03e5cc38a61c1c7e6f9ad96";
 
   await erc20.setContractHash(erc20ContractHash.slice(5));
 
-  const idoContractPackageHash = await getAccountNamedKeyValue(
-    casperClient,
-    KEYS.publicKey,
-    `casper_ido_contract_package_hash`
-  );
-  const auctionTokenCapacity = parseFixed(capacity.toString(), decimals);
+  const idoContractPackageHash =
+    "hash-a055f9a34f58f3bdcf8abbab6886d7502d08ddb5f48bc288238685bb57e1dfef";
+  const auctionTokenCapacity = "500000000000";
+
   let deployHash = await erc20.approve(
     KEYS,
     CLValueBuilder.byteArray(decodeBase16(idoContractPackageHash.slice(5))),
     auctionTokenCapacity.toString(),
-    DEFAULT_RUN_ENTRYPOINT_PAYMENT!
+    "100000000"
   );
   console.log(`ERC20 Approve deploy hash: ${deployHash}`);
   await getDeploy(NODE_ADDRESS!, deployHash);
@@ -101,12 +92,35 @@ const setAuctionToken = async () => {
     KEYS,
     `contract-${erc20ContractHash.slice(5)}`,
     auctionTokenCapacity,
-    DEFAULT_RUN_ENTRYPOINT_PAYMENT!
+    "1000000000"
   );
 
   console.log(`setAuctionToken deploy hash: ${deployHash}`);
   await getDeploy(NODE_ADDRESS!, deployHash);
   console.log("setAuctionToken done");
+};
+
+const changeAuctionTokenPrice = async () => {
+  const idoContract = new IDOClient(
+    NODE_ADDRESS!,
+    CHAIN_NAME!,
+    EVENT_STREAM_ADDRESS!
+  );
+
+  const idoContractHash =
+    "hash-f86ccc2fb216ac512ddb44c42208cb86b7f75bf260f4505246def86d014a3c11";
+
+  await idoContract.setContractHash(idoContractHash.slice(5));
+
+  const deployHash = await idoContract.changeAuctionTokenPrice(
+    KEYS,
+    "1000000000",
+    "1000000000"
+  );
+
+  console.log(`changeAuctionTokenPrice deploy hash: ${deployHash}`);
+  await getDeploy(NODE_ADDRESS!, deployHash);
+  console.log("changeAuctionTokenPrice done");
 };
 
 const setMerkelRoot = async () => {
@@ -143,6 +157,7 @@ const runPresaleActions = async () => {
   await setMerkelRoot();
 };
 
-// setAuctionToken();
+setAuctionToken();
+// changeAuctionTokenPrice();
 // runPresaleActions();
-setMerkelRoot();
+// setMerkelRoot();

@@ -1,7 +1,7 @@
 [package]
 name = "contract-utils"
-version = "0.1.0"
-authors = ["Maciej Zielinski <maciek.s.zielinski@gmail.com>"]
+version = "0.1.1"
+authors = ["Maciej Zielinski <maciek.s.zielinski@gmail.com>","Ryo Kanazawa"]
 edition = "2018"
 
 [dependencies]

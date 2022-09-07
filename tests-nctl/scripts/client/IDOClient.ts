@@ -291,6 +291,25 @@ export default class IDOClient extends CasperContractClient {
     });
   }
 
+  public async changeAuctionTokenPrice(
+    keys: Keys.AsymmetricKey,
+    price: BigNumberish,
+    paymentAmount: string,
+    ttl = DEFAULT_TTL
+  ) {
+    const runtimeArgs = RuntimeArgs.fromMap({
+      price: CLValueBuilder.u256(price),
+    });
+
+    return await this.contractCall({
+      entryPoint: "change_auction_token_price",
+      keys,
+      paymentAmount,
+      runtimeArgs,
+      ttl,
+    });
+  }
+
   public async addOrders(
     keys: Keys.AsymmetricKey,
     orders: Map<string, BigNumberish>,

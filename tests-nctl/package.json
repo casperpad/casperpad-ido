@@ -12,6 +12,7 @@
     "get-contract-values": "ts-node ./scripts/get-contract-values",
     "change-time-schedules": "ts-node ./scripts/change-time-schedules",
     "convert-whitelist": "ts-node ./scripts/convert-whitelist",
+    "generate:investor-list": "ts-node ./scripts/generate-list",
     "deploy": "ts-node ./scripts/deploy.ts"
   },
   "keywords": [

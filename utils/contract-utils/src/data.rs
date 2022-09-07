@@ -22,7 +22,9 @@ impl Dict {
     }
 
     pub fn init(name: &str) {
-        storage::new_dictionary(name).unwrap_or_revert();
+        if runtime::get_key(name).is_none() {
+            storage::new_dictionary(name).unwrap_or_revert();
+        }
     }
 
     pub fn at(uref: URef) -> Dict {

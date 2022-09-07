@@ -62,8 +62,8 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
     }
 
     fn set_auction_token(&mut self, auction_token: ContractHash, auction_token_capacity: U256) {
-        self._asert_null_auction_token();
-        self._assert_before_first_shedule_time();
+        self._assert_null_auction_token();
+
         set_auction_token_capacity(auction_token_capacity);
         let auction_creator = get_creator();
         IERC20::new(auction_token).transfer_from(
@@ -243,8 +243,8 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         });
     }
 
+    /// `price` is given in 1TK=2 * 10 ** 9 CSPR format
     fn change_auction_token_price(&mut self, price: U256) {
-        self._assert_before_auction_time();
         set_auction_token_price(price);
     }
 
@@ -254,8 +254,6 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         auction_end_time: Time,
         schedules: Schedules,
     ) {
-        self._assert_before_auction_time();
-
         set_auction_start_time(auction_start_time);
         set_auction_end_time(auction_end_time);
         set_schedules(schedules);
@@ -322,28 +320,10 @@ pub trait CasperIdo<Storage: ContractStorage>: ContractContext<Storage> {
         get_auction_token_capacity()
     }
 
-    fn _asert_null_auction_token(&self) {
+    fn _assert_null_auction_token(&self) {
         let auction_token = self.auction_token();
         if auction_token.ne(&ContractHash::new([0u8; 32])) {
             runtime::revert(Error::AlreadySettedToken);
-        }
-    }
-
-    fn _assert_before_first_shedule_time(&self) {
-        let time = Time::from(runtime::get_blocktime());
-        let schedules = get_schedules();
-        let first_time = schedules.keys().min().unwrap();
-
-        if time.gt(first_time) {
-            runtime::revert(Error::InvalidTime);
-        }
-    }
-
-    fn _assert_before_auction_time(&self) {
-        let time = Time::from(runtime::get_blocktime());
-        let auction_start_time = get_auction_start_time();
-        if time.gt(&auction_start_time) {
-            runtime::revert(Error::InvalidTime);
         }
     }
 

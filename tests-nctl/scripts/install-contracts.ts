@@ -84,7 +84,8 @@ const deployIDO = async () => {
     name,
   } = kunft.info;
 
-  const auctionTokenPrice = parseFixed(token.price.toString(), 9);
+  // const auctionTokenPrice = parseFixed(token.price.toString(), 9);
+  const auctionTokenPrice = "1000000000";
   const auctionTokenCapacity = parseFixed(
     token.capacity.toString(),
     token.decimals
@@ -100,8 +101,8 @@ const deployIDO = async () => {
   const payToken = undefined; // payment is CSPR
 
   const contractName = `${name}_ido`;
-  // const contractPackageHash = `contract-package-wasm7d7896b8e0f04f6c54904f834427be1fe8b0f5acdadb27e32c44051e35cb193c`;
-  const contractPackageHash = undefined;
+  const contractPackageHash = `contract-package-wasma055f9a34f58f3bdcf8abbab6886d7502d08ddb5f48bc288238685bb57e1dfef`;
+  // const contractPackageHash = undefined;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
