@@ -1,6 +1,6 @@
 import { config } from "dotenv";
-// config();
-config({ path: ".env.test.local" });
+config();
+// config({ path: ".env.test.local" });
 // config({ path: ".env.production.local" });
 import {
   CasperClient,
@@ -59,7 +59,7 @@ const setAuctionToken = async () => {
   );
 
   const idoContractHash =
-    "hash-f86ccc2fb216ac512ddb44c42208cb86b7f75bf260f4505246def86d014a3c11";
+    "hash-6cc90635ccaf0fac5c08f0533ea85336f2975202f5d01a5a1894f6f6cb306827";
 
   await idoContract.setContractHash(idoContractHash.slice(5));
 
@@ -70,13 +70,13 @@ const setAuctionToken = async () => {
   );
 
   const erc20ContractHash =
-    "hash-91b9d48a4d24d4b82eb68b566b357568f5d5e1e8b03e5cc38a61c1c7e6f9ad96";
+    "hash-a3834fc5ebb9ae5e83bc3cf3b94a27728150bb4a19946fa64f4f663113d5f882";
 
   await erc20.setContractHash(erc20ContractHash.slice(5));
 
   const idoContractPackageHash =
-    "hash-a055f9a34f58f3bdcf8abbab6886d7502d08ddb5f48bc288238685bb57e1dfef";
-  const auctionTokenCapacity = "500000000000";
+    "hash-2d9d5859197fe59f125762634f5aa7a93bdd50c1cfeebf3276313da418a57d57";
+  const auctionTokenCapacity = "3095087649937267";
 
   let deployHash = await erc20.approve(
     KEYS,

@@ -101,8 +101,8 @@ const deployIDO = async () => {
   const payToken = undefined; // payment is CSPR
 
   const contractName = `${name}_ido`;
-  const contractPackageHash = `contract-package-wasma055f9a34f58f3bdcf8abbab6886d7502d08ddb5f48bc288238685bb57e1dfef`;
-  // const contractPackageHash = undefined;
+  // const contractPackageHash = `contract-package-wasma055f9a34f58f3bdcf8abbab6886d7502d08ddb5f48bc288238685bb57e1dfef`;
+  const contractPackageHash = undefined;
 
   const installDeployHash = await IDOContract.install(
     KEYS,
